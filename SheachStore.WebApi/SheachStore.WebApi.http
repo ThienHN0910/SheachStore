@@ -1,0 +1,28 @@
+@SheachStore.WebApi_HostAddress = http://localhost:5202
+
+POST {{SheachStore.WebApi_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "admin@sheachstore.local",
+  "password": "Admin@12345",
+  "fullName": "Admin User",
+  "role": "Admin"
+}
+
+###
+
+POST {{SheachStore.WebApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@sheachstore.local",
+  "password": "Admin@12345"
+}
+
+###
+
+GET {{SheachStore.WebApi_HostAddress}}/api/books
+Accept: application/json
+
+###
