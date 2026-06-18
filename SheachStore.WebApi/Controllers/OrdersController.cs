@@ -1,0 +1,136 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SheachStore.WebApi.Data;
+using SheachStore.WebApi.Dtos;
+using SheachStore.WebApi.Models;
+using SheachStore.WebApi.Repositories;
+
+namespace SheachStore.WebApi.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("api/[controller]")]
+public class OrdersController : ControllerBase
+{
+    private readonly AppDbContext _dbContext;
+    private readonly IOrderRepository _orderRepository;
+
+    public OrdersController(AppDbContext dbContext, IOrderRepository orderRepository)
+    {
+        _dbContext = dbContext;
+        _orderRepository = orderRepository;
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet]
+    public async Task<ActionResult<List<OrderResponse>>> GetAll(CancellationToken cancellationToken)
+    {
+        var orders = await _orderRepository.GetAllWithDetailsAsync(cancellationToken);
+        return Ok(orders.Select(order => order.ToResponse()));
+    }
+
+    [HttpGet("mine")]
+    public async Task<ActionResult<List<OrderResponse>>> GetMine(CancellationToken cancellationToken)
+    {
+        var orders = await _orderRepository.GetByUserIdAsync(GetUserId(), cancellationToken);
+        return Ok(orders.Select(order => order.ToResponse()));
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<OrderResponse>> GetById(int id, CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetByIdWithDetailsAsync(id, cancellationToken);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        if (!IsAdmin() && order.UserId != GetUserId())
+        {
+            return Forbid();
+        }
+
+        return Ok(order.ToResponse());
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<OrderResponse>> Create(CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Items.Count == 0)
+        {
+            return BadRequest("Order must contain at least one item.");
+        }
+
+        var bookIds = request.Items.Select(item => item.BookId).Distinct().ToList();
+        var books = await _dbContext.Books.Where(book => bookIds.Contains(book.Id)).ToListAsync(cancellationToken);
+        if (books.Count != bookIds.Count)
+        {
+            return BadRequest("One or more books do not exist.");
+        }
+
+        var orderItems = new List<OrderItem>();
+        foreach (var item in request.Items)
+        {
+            var book = books.Single(book => book.Id == item.BookId);
+            if (book.Stock < item.Quantity)
+            {
+                return BadRequest($"Book '{book.Title}' does not have enough stock.");
+            }
+
+            book.Stock -= item.Quantity;
+            orderItems.Add(new OrderItem
+            {
+                BookId = book.Id,
+                Quantity = item.Quantity,
+                UnitPrice = book.Price
+            });
+        }
+
+        var order = new Order
+        {
+            UserId = GetUserId(),
+            PaymentMethod = request.PaymentMethod,
+            ShippingAddress = request.ShippingAddress,
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            OrderItems = orderItems,
+            TotalAmount = orderItems.Sum(item => item.Quantity * item.UnitPrice)
+        };
+
+        await _dbContext.Orders.AddAsync(order, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var created = await _orderRepository.GetByIdWithDetailsAsync(order.Id, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = order.Id }, created!.ToResponse());
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("{id:int}/status")]
+    public async Task<IActionResult> UpdateStatus(int id, UpdateOrderStatusRequest request, CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        order.Status = request.Status;
+        _orderRepository.Update(order);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
+    private string GetUserId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("Authenticated user id was not found.");
+    }
+
+    private bool IsAdmin()
+    {
+        return User.IsInRole(UserRole.Admin.ToString());
+    }
+}
