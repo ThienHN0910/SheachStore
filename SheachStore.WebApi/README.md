@@ -67,3 +67,27 @@ dotnet ef database update
 ```
 
 Swagger chạy trong môi trường Development tại `/swagger`.
+
+## Flutter client integration
+
+Flutter client nằm ở thư mục `lib/` của repo gốc và gọi các endpoint trong README này qua service layer:
+
+- `AuthService` gọi `POST /api/auth/register` và `POST /api/auth/login`, sau đó lưu JWT bằng `flutter_secure_storage`.
+- `BookService`, `CartService`, `OrderService`, `ReviewService` đang được dùng bởi các customer screens.
+- Các request cần đăng nhập gửi header `Authorization: Bearer <token>`.
+- API enum được serialize dạng string, ví dụ `CashOnDelivery`, `Pending`, `Customer`.
+
+Base URL mặc định của Flutter:
+
+- Android emulator: `http://10.0.2.2:5202`
+- Desktop/iOS simulator: `http://localhost:5202`
+
+Các màn Flutter hiện có:
+
+- Login/Register.
+- Books catalog.
+- Book detail kèm reviews và add-to-cart.
+- Cart kèm checkout.
+- My Orders.
+
+Khi test end-to-end, chạy WebApi trước, tạo database bằng migration nếu cần, rồi chạy Flutter app.
