@@ -49,6 +49,6 @@ obj/
 .vs/
 .vscode/
 *.user
-Properties/PublishProfiles/
+Properties/PublishProfiles/*
 appsettings.json
 appsettings.*.json

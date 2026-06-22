@@ -1,15 +1,10 @@
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConfig {
   ApiConfig._();
 
-  static const String _hostPort = '5202';
-
   static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:$_hostPort';
-    }
-
-    return 'http://localhost:$_hostPort';
+    return 'https://bookstore26.runasp.net';
   }
 }
