@@ -61,9 +61,13 @@ class _AuthScreenState extends State<AuthScreen> {
         widget.onAuthenticated();
       }
     } on ApiException catch (error) {
-      setState(() => _error = error.message);
+      if (mounted) {
+        setState(() => _error = error.message);
+      }
     } catch (error) {
-      setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() => _error = error.toString());
+      }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

@@ -37,7 +37,9 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _refresh() {
-    setState(() => _cartFuture = _cartService.getCart());
+    if (mounted) {
+      setState(() => _cartFuture = _cartService.getCart());
+    }
   }
 
   Future<void> _updateQuantity(CartItemResponse item, int quantity) async {

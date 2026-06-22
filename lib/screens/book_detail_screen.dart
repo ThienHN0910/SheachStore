@@ -56,7 +56,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   void _refresh() {
-    setState(() => _detailFuture = _load());
+    if (mounted) {
+      setState(() => _detailFuture = _load());
+    }
   }
 
   Future<void> _addToCart(BookResponse book) async {

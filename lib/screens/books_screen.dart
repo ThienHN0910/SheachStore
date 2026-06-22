@@ -30,7 +30,9 @@ class _BooksScreenState extends State<BooksScreen> {
   }
 
   void _refresh() {
-    setState(() => _booksFuture = _bookService.getBooks());
+    if (mounted) {
+      setState(() => _booksFuture = _bookService.getBooks());
+    }
   }
 
   Future<void> _logout() async {
@@ -41,9 +43,9 @@ class _BooksScreenState extends State<BooksScreen> {
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => AuthScreen(
+        builder: (authContext) => AuthScreen(
           onAuthenticated: () {
-            Navigator.of(context).pushReplacement(
+            Navigator.of(authContext).pushReplacement(
               MaterialPageRoute(builder: (_) => const BooksScreen()),
             );
           },

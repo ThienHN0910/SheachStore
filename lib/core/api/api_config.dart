@@ -5,6 +5,6 @@ class ApiConfig {
   ApiConfig._();
 
   static String get baseUrl {
-    return 'https://bookstore26.runasp.net';
+    return 'http://bookstore26.runasp.net';
   }
 }
