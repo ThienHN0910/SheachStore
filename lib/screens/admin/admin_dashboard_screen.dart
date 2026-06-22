@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'manage_books_screen.dart';
+import 'manage_categories_screen.dart';
+import 'manage_authors_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -36,17 +38,17 @@ class AdminDashboardScreen extends StatelessWidget {
             title: 'Categories',
             icon: Icons.category_outlined,
             color: Colors.green,
-            onTap: () {
-              // TODO: Implement ManageCategoriesScreen
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ManageCategoriesScreen()),
+            ),
           ),
           _AdminCard(
             title: 'Authors',
             icon: Icons.person_outline,
             color: Colors.purple,
-            onTap: () {
-              // TODO: Implement ManageAuthorsScreen
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ManageAuthorsScreen()),
+            ),
           ),
         ],
       ),
@@ -74,7 +76,6 @@ class _AdminCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Column(
-          mainAxisAlignment: MainManager.center, // Error here, should be MainAxisAlignment.center
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 48, color: color),

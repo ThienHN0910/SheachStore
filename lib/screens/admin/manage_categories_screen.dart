@@ -22,7 +22,10 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
   }
 
   void _refresh() {
-    setState(() => _categoriesFuture = _categoryService.getCategories());
+    final future = _categoryService.getCategories();
+    setState(() {
+      _categoriesFuture = future;
+    });
   }
 
   Future<void> _showCategoryDialog([CategoryResponse? category]) async {

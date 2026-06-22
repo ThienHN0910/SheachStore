@@ -60,26 +60,62 @@ public class AuthController : ControllerBase
         return Ok(await CreateAuthResponseAsync(user));
     }
 
+    [HttpGet("profile")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<ActionResult<UserResponse>> GetProfile()
+    {
+        var userId = _userManager.GetUserId(User);
+        if (userId == null) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return NotFound();
+
+        // Fail-safe: Đảm bảo user có role trong Identity nếu User.Role property đã được set
+        var roles = await _userManager.GetRolesAsync(user);
+        if (!roles.Contains(user.Role.ToString()))
+        {
+            await EnsureRoleAsync(user.Role);
+            await _userManager.AddToRoleAsync(user, user.Role.ToString());
+        }
+
+        return Ok(user.ToResponse());
+    }
+
     private async Task<AuthResponse> CreateAuthResponseAsync(User user)
     {
         var expiresAt = DateTime.UtcNow.AddHours(2);
         var roles = await _userManager.GetRolesAsync(user);
+
+        // Đảm bảo có ít nhất role của user trong danh sách claims
+        if (!roles.Contains(user.Role.ToString()))
+        {
+            roles.Add(user.Role.ToString());
+        }
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.NameIdentifier, user.Id),
             new(ClaimTypes.Email, user.Email ?? string.Empty),
             new(ClaimTypes.Name, user.FullName)
         };
 
-        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var secret = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.");
-        var issuer = _configuration["Jwt:Issuer"];
-        var audience = _configuration["Jwt:Audience"];
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(issuer, audience, claims, expires: expiresAt, signingCredentials: credentials);
+
+        var token = new JwtSecurityToken(
+            issuer: _configuration["Jwt:Issuer"],
+            audience: _configuration["Jwt:Audience"],
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials);
 
         return new AuthResponse(new JwtSecurityTokenHandler().WriteToken(token), expiresAt, user.ToResponse());
     }

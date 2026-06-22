@@ -45,6 +45,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
+      // Đợi một chút để đảm bảo storage đã ghi xong (quan trọng cho Web)
+      await Future.delayed(const Duration(milliseconds: 100));
       emit(Authenticated(response.user));
     } catch (e) {
       emit(AuthError(e.toString()));

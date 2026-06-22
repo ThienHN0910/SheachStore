@@ -24,7 +24,10 @@ class _ManageBooksScreenState extends State<ManageBooksScreen> {
   }
 
   void _refresh() {
-    setState(() => _booksFuture = _bookService.getBooks());
+    final future = _bookService.getBooks();
+    setState(() {
+      _booksFuture = future;
+    });
   }
 
   Future<void> _deleteBook(BookResponse book) async {

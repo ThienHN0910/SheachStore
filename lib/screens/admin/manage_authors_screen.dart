@@ -22,7 +22,10 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
   }
 
   void _refresh() {
-    setState(() => _authorsFuture = _authorService.getAuthors());
+    final future = _authorService.getAuthors();
+    setState(() {
+      _authorsFuture = future;
+    });
   }
 
   Future<void> _showAuthorDialog([AuthorResponse? author]) async {

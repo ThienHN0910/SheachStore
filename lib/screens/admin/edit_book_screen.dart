@@ -45,10 +45,16 @@ class _EditBookScreenState extends State<EditBookScreen> {
     _selectedAuthorId = widget.book?.authorId;
     _selectedCategoryId = widget.book?.categoryId;
 
-    _dataFuture = Future.wait([
-      _authorService.getAuthors(),
-      _categoryService.getCategories(),
-    ]);
+    _refreshData();
+  }
+
+  void _refreshData() {
+    setState(() {
+      _dataFuture = Future.wait([
+        _authorService.getAuthors(),
+        _categoryService.getCategories(),
+      ]);
+    });
   }
 
   @override
@@ -59,6 +65,70 @@ class _EditBookScreenState extends State<EditBookScreen> {
     _coverUrlController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _addNewAuthor() async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add New Author'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Author Name'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
+        ],
+      ),
+    );
+
+    if (result == true && controller.text.trim().isNotEmpty) {
+      try {
+        final author = await _authorService.createAuthor(AuthorRequest(name: controller.text.trim()));
+        setState(() {
+          _selectedAuthorId = author.id;
+        });
+        _refreshData();
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> _addNewCategory() async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add New Category'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Category Name'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
+        ],
+      ),
+    );
+
+    if (result == true && controller.text.trim().isNotEmpty) {
+      final name = controller.text.trim();
+      final slug = name.toLowerCase().replaceAll(' ', '-');
+      try {
+        final category = await _categoryService.createCategory(CategoryRequest(name: name, slug: slug));
+        setState(() {
+          _selectedCategoryId = category.id;
+        });
+        _refreshData();
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -118,14 +188,7 @@ class _EditBookScreenState extends State<EditBookScreen> {
           }
 
           if (snapshot.hasError) {
-            return ErrorState(message: snapshot.error.toString(), onRetry: () {
-              setState(() {
-                _dataFuture = Future.wait([
-                  _authorService.getAuthors(),
-                  _categoryService.getCategories(),
-                ]);
-              });
-            });
+            return ErrorState(message: snapshot.error.toString(), onRetry: _refreshData);
           }
 
           final authors = snapshot.data![0] as List<AuthorResponse>;
@@ -142,18 +205,42 @@ class _EditBookScreenState extends State<EditBookScreen> {
                   validator: (v) => v?.isEmpty == true ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  value: _selectedAuthorId,
-                  decoration: const InputDecoration(labelText: 'Author'),
-                  items: authors.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
-                  onChanged: (v) => setState(() => _selectedAuthorId = v),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedAuthorId,
+                        decoration: const InputDecoration(labelText: 'Author'),
+                        items: authors.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
+                        onChanged: (v) => setState(() => _selectedAuthorId = v),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _addNewAuthor,
+                      icon: const Icon(Icons.add_circle_outline),
+                      tooltip: 'Add new author',
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  value: _selectedCategoryId,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                  items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                  onChanged: (v) => setState(() => _selectedCategoryId = v),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedCategoryId,
+                        decoration: const InputDecoration(labelText: 'Category'),
+                        items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                        onChanged: (v) => setState(() => _selectedCategoryId = v),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _addNewCategory,
+                      icon: const Icon(Icons.add_circle_outline),
+                      tooltip: 'Add new category',
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Row(

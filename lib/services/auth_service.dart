@@ -2,6 +2,7 @@ import '../core/api/api_client.dart';
 import '../core/storage/token_storage.dart';
 import '../models/api_enums.dart';
 import '../models/auth_models.dart';
+import '../models/user_models.dart';
 
 class AuthService {
   AuthService({ApiClient? apiClient, TokenStorage? tokenStorage})
@@ -48,5 +49,13 @@ class AuthService {
 
   Future<void> logout() {
     return _tokenStorage.clearToken();
+  }
+
+  Future<UserResponse> getProfile() async {
+    return await _apiClient.get(
+      '/api/auth/profile',
+      (json) => UserResponse.fromJson(json as Map<String, dynamic>),
+      authorized: true,
+    );
   }
 }
