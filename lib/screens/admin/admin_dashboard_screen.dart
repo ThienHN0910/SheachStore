@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'manage_books_screen.dart';
 import 'manage_categories_screen.dart';
 import 'manage_authors_screen.dart';
+import 'manage_orders_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -30,9 +31,9 @@ class AdminDashboardScreen extends StatelessWidget {
             title: 'Manage Orders',
             icon: Icons.shopping_bag_outlined,
             color: Colors.orange,
-            onTap: () {
-              // TODO: Implement ManageOrdersScreen
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ManageOrdersScreen()),
+            ),
           ),
           _AdminCard(
             title: 'Categories',
