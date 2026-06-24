@@ -74,6 +74,7 @@ class OrderResponse {
   const OrderResponse({
     required this.id,
     required this.userId,
+    this.userFullName,
     required this.totalAmount,
     required this.status,
     required this.paymentMethod,
@@ -84,6 +85,7 @@ class OrderResponse {
 
   final int id;
   final String userId;
+  final String? userFullName;
   final double totalAmount;
   final OrderStatus status;
   final PaymentMethod paymentMethod;
@@ -95,6 +97,7 @@ class OrderResponse {
     return OrderResponse(
       id: json['id'] as int,
       userId: json['userId'] as String,
+      userFullName: json['userFullName'] as String?,
       totalAmount: (json['totalAmount'] as num).toDouble(),
       status: OrderStatus.fromJson(json['status'] as String),
       paymentMethod: PaymentMethod.fromJson(json['paymentMethod'] as String),

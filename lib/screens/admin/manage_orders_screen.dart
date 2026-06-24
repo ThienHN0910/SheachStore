@@ -55,18 +55,28 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
       body: FutureBuilder<List<OrderResponse>>(
         future: _ordersFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) return const LoadingState();
-          if (snapshot.hasError) return ErrorState(message: snapshot.error.toString(), onRetry: _refresh);
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const LoadingState();
+          }
+          if (snapshot.hasError) {
+            return ErrorState(
+              message: snapshot.error.toString(),
+              onRetry: _refresh,
+            );
+          }
 
           final orders = snapshot.data ?? [];
           if (orders.isEmpty) {
-            return const EmptyState(title: 'No orders yet', message: 'Customer orders will appear here.');
+            return const EmptyState(
+              title: 'No orders yet',
+              message: 'Customer orders will appear here.',
+            );
           }
 
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: orders.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final order = orders[index];
               return Card(
@@ -79,7 +89,10 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
                         children: [
                           Text(
                             'Order #${order.id}',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const Spacer(),
                           Text(formatDate(order.createdAt)),
@@ -97,13 +110,13 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
                           PopupMenuButton<OrderStatus>(
                             onSelected: (status) => _updateStatus(order, status),
                             itemBuilder: (context) => OrderStatus.values
-                                .map((s) => PopupMenuEntry<OrderStatus>(
+                                .map((s) => PopupMenuItem<OrderStatus>(
                                       value: s,
                                       child: Text(orderStatusLabel(s)),
                                     ))
                                 .toList(),
                             child: OutlinedButton.icon(
-                              onPressed: null, // PopupMenuButton handles tap
+                              onPressed: null,
                               icon: const Icon(Icons.edit_outlined, size: 18),
                               label: const Text('Update Status'),
                             ),
@@ -141,13 +154,14 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color),
       ),
       child: Text(
         orderStatusLabel(status),
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }
