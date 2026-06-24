@@ -16,6 +16,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         super(AuthInitial()) {
     on<AppStarted>(_onAppStarted);
     on<LoginRequested>(_onLoginRequested);
+    on<RegisterRequested>(_onRegisterRequested);
     on<LogoutRequested>(_onLogoutRequested);
   }
 
@@ -46,6 +47,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
       // Đợi một chút để đảm bảo storage đã ghi xong (quan trọng cho Web)
+      await Future.delayed(const Duration(milliseconds: 100));
+      emit(Authenticated(response.user));
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onRegisterRequested(
+    RegisterRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final response = await _authService.register(
+        email: event.email,
+        password: event.password,
+        fullName: event.fullName,
+        role: event.role,
+      );
       await Future.delayed(const Duration(milliseconds: 100));
       emit(Authenticated(response.user));
     } catch (e) {

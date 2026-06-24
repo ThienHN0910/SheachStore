@@ -4,8 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
-import '../models/api_enums.dart';
-import '../services/auth_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.onAuthenticated});
@@ -32,37 +30,27 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
     if (_isRegistering) {
-      // Register vẫn dùng trực tiếp service hoặc tạo RegisterEvent nếu muốn
-      try {
-        final authService = context.read<AuthService>();
-        await authService.register(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          fullName: _fullNameController.text.trim(),
-          role: UserRole.customer,
-        );
-        // Sau khi register thành công, AuthBloc AppStarted sẽ nhận diện token và login
-        if (mounted) {
-          context.read<AuthBloc>().add(AppStarted());
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
+      context.read<AuthBloc>().add(
+            RegisterRequested(
+              email: email,
+              password: password,
+              fullName: _fullNameController.text.trim(),
+            ),
           );
-        }
-      }
     } else {
       context.read<AuthBloc>().add(
             LoginRequested(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
+              email: email,
+              password: password,
             ),
           );
     }
@@ -74,7 +62,10 @@ class _AuthScreenState extends State<AuthScreen> {
       listener: (context, state) {
         if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
           );
         }
       },
@@ -179,6 +170,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           );
                         },
                       ),
+                      const SizedBox(height: 16),
                       TextButton(
                         onPressed: () {
                           setState(() {
