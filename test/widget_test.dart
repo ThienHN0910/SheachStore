@@ -4,7 +4,7 @@ import 'package:src/main.dart';
 void main() {
   testWidgets('renders auth screen when no token exists', (tester) async {
     await tester.pumpWidget(
-      SheachStoreApp(initialTokenFuture: Future<String?>.value(null)),
+      const SheachStoreApp(),
     );
     await tester.pumpAndSettle();
 

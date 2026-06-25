@@ -78,20 +78,18 @@ class _AppGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
-        if (state is AuthInitial || state is AuthLoading) {
+        if (state is Authenticated) {
+          return const BooksScreen();
+        }
+
+        if (state is AuthInitial) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        if (state is Authenticated) {
-          return const BooksScreen();
-        }
-
         return AuthScreen(
-          onAuthenticated: () {
-            // Không cần Navigator nữa vì BlocBuilder sẽ tự render BooksScreen khi state là Authenticated
-          },
+          onAuthenticated: () {},
         );
       },
     );

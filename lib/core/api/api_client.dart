@@ -142,6 +142,16 @@ class ApiClient {
               details['message']?.toString() ??
               details['error']?.toString() ??
               message;
+        } else if (details is List) {
+          final errors = details.map((e) {
+            if (e is Map<String, dynamic>) {
+              return e['description']?.toString() ?? e['message']?.toString() ?? '';
+            }
+            return e.toString();
+          }).where((msg) => msg.isNotEmpty).join('\n');
+          if (errors.isNotEmpty) {
+            message = errors;
+          }
         } else if (details is String) {
           message = details;
         }

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/api/api_exception.dart';
 import '../../core/storage/token_storage.dart';
 import '../../services/auth_service.dart';
 import 'auth_event.dart';
@@ -50,7 +51,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await Future.delayed(const Duration(milliseconds: 100));
       emit(Authenticated(response.user));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      if (e is ApiException) {
+        emit(AuthError(e.message));
+      } else {
+        emit(AuthError(e.toString()));
+      }
     }
   }
 
@@ -69,7 +74,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await Future.delayed(const Duration(milliseconds: 100));
       emit(Authenticated(response.user));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      if (e is ApiException) {
+        emit(AuthError(e.message));
+      } else {
+        emit(AuthError(e.toString()));
+      }
     }
   }
 
