@@ -1,22 +1,18 @@
 import 'dart:convert';
-
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:http/http.dart' as http;
 
-import '../storage/token_storage.dart';
 import 'api_config.dart';
 import 'api_exception.dart';
 
 class ApiClient {
   ApiClient({
     http.Client? httpClient,
-    TokenStorage? tokenStorage,
     String? baseUrl,
   }) : _httpClient = httpClient ?? http.Client(),
-       _tokenStorage = tokenStorage ?? TokenStorage(),
        _baseUrl = baseUrl ?? ApiConfig.baseUrl;
 
   final http.Client _httpClient;
-  final TokenStorage _tokenStorage;
   final String _baseUrl;
 
   Future<T> get<T>(
@@ -90,7 +86,8 @@ class ApiClient {
     };
 
     if (authorized) {
-      final token = await _tokenStorage.readToken();
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      final token = await user?.getIdToken();
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }

@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import '../../models/api_enums.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -24,17 +23,17 @@ class RegisterRequested extends AuthEvent {
   final String email;
   final String password;
   final String fullName;
-  final UserRole role;
 
   const RegisterRequested({
     required this.email,
     required this.password,
     required this.fullName,
-    this.role = UserRole.customer,
   });
 
   @override
-  List<Object?> get props => [email, password, fullName, role];
+  List<Object?> get props => [email, password, fullName];
 }
 
 class LogoutRequested extends AuthEvent {}
+
+class GoogleSignInRequested extends AuthEvent {}
