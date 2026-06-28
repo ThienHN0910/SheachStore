@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/book/book_bloc.dart';
 import 'blocs/book/book_event.dart';
-import 'core/storage/token_storage.dart';
 import 'repositories/book_repository.dart';
 import 'screens/auth_screen.dart';
 import 'screens/books_screen.dart';
 import 'services/auth_service.dart';
 import 'services/book_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const SheachStoreApp());
 }
 
@@ -24,13 +29,8 @@ class SheachStoreApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider(create: (_) => TokenStorage()),
         RepositoryProvider(create: (_) => BookService()),
-        RepositoryProvider(
-          create: (context) => AuthService(
-            tokenStorage: context.read<TokenStorage>(),
-          ),
-        ),
+        RepositoryProvider(create: (_) => AuthService()),
         RepositoryProvider(
           create: (context) => BookRepository(
             bookService: context.read<BookService>(),
@@ -42,7 +42,6 @@ class SheachStoreApp extends StatelessWidget {
           BlocProvider(
             create: (context) => AuthBloc(
               authService: context.read<AuthService>(),
-              tokenStorage: context.read<TokenStorage>(),
             )..add(AppStarted()),
           ),
           BlocProvider(

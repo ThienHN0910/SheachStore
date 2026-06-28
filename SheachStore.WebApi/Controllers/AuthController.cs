@@ -1,9 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using SheachStore.WebApi.Dtos;
 using SheachStore.WebApi.Models;
 
@@ -14,54 +11,18 @@ namespace SheachStore.WebApi.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly UserManager<User> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
-    private readonly IConfiguration _configuration;
 
-    public AuthController(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration)
+    public AuthController(UserManager<User> userManager)
     {
         _userManager = userManager;
-        _roleManager = roleManager;
-        _configuration = configuration;
     }
 
-    [HttpPost("register")]
-    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
-    {
-        var user = new User
-        {
-            UserName = request.Email,
-            Email = request.Email,
-            FullName = request.FullName,
-            Role = request.Role,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var result = await _userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-        {
-            return BadRequest(result.Errors);
-        }
-
-        await EnsureRoleAsync(user.Role);
-        await _userManager.AddToRoleAsync(user, user.Role.ToString());
-
-        return Ok(await CreateAuthResponseAsync(user));
-    }
-
-    [HttpPost("login")]
-    public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
-    {
-        var user = await _userManager.FindByEmailAsync(request.Email);
-        if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
-        {
-            return Unauthorized("Invalid email or password.");
-        }
-
-        return Ok(await CreateAuthResponseAsync(user));
-    }
-
+    /// <summary>
+    /// Trả về thông tin profile của user đang đăng nhập từ SQL.
+    /// User record được tự động tạo lần đầu tiên khi đăng nhập qua Firebase.
+    /// </summary>
     [HttpGet("profile")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
+    [Authorize]
     public async Task<ActionResult<UserResponse>> GetProfile()
     {
         var userId = _userManager.GetUserId(User);
@@ -70,62 +31,6 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null) return NotFound();
 
-        // Fail-safe: Đảm bảo user có role trong Identity nếu User.Role property đã được set
-        var roles = await _userManager.GetRolesAsync(user);
-        if (!roles.Contains(user.Role.ToString()))
-        {
-            await EnsureRoleAsync(user.Role);
-            await _userManager.AddToRoleAsync(user, user.Role.ToString());
-        }
-
         return Ok(user.ToResponse());
-    }
-
-    private async Task<AuthResponse> CreateAuthResponseAsync(User user)
-    {
-        var expiresAt = DateTime.UtcNow.AddHours(2);
-        var roles = await _userManager.GetRolesAsync(user);
-
-        // Đảm bảo có ít nhất role của user trong danh sách claims
-        if (!roles.Contains(user.Role.ToString()))
-        {
-            roles.Add(user.Role.ToString());
-        }
-
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.Id),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(ClaimTypes.NameIdentifier, user.Id),
-            new(ClaimTypes.Email, user.Email ?? string.Empty),
-            new(ClaimTypes.Name, user.FullName)
-        };
-
-        foreach (var role in roles)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        }
-
-        var secret = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
-            claims: claims,
-            expires: expiresAt,
-            signingCredentials: credentials);
-
-        return new AuthResponse(new JwtSecurityTokenHandler().WriteToken(token), expiresAt, user.ToResponse());
-    }
-
-    private async Task EnsureRoleAsync(UserRole role)
-    {
-        var roleName = role.ToString();
-        if (!await _roleManager.RoleExistsAsync(roleName))
-        {
-            await _roleManager.CreateAsync(new IdentityRole(roleName));
-        }
     }
 }

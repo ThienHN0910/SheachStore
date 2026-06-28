@@ -339,6 +339,35 @@ class _AuthScreenState extends State<AuthScreen> {
                               : 'Need an account? Register',
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OR',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          context.read<AuthBloc>().add(GoogleSignInRequested());
+                        },
+                        icon: Image.network(
+                          'https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png',
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 24),
+                        ),
+                        label: const Text('Sign in with Google'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),

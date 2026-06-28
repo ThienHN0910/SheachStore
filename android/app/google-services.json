@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "769026789409",
+    "project_id": "book-store-4bea6",
+    "storage_bucket": "book-store-4bea6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:769026789409:android:93f6aa5121995e205f1360",
+        "android_client_info": {
+          "package_name": "com.example.src"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-p0xU3Exi6Qp9XwLMV9D505gLfSxwpNE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
