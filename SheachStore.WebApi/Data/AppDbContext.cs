@@ -20,6 +20,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole, string>
     public DbSet<Cart> Carts => Set<Cart>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -134,6 +135,22 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole, string>
 
             entity.HasOne(item => item.Book)
                 .WithMany(book => book.CartItems)
+                .HasForeignKey(item => item.BookId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<WishlistItem>(entity =>
+        {
+            entity.Property(item => item.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.HasIndex(item => new { item.UserId, item.BookId }).IsUnique();
+
+            entity.HasOne(item => item.User)
+                .WithMany(user => user.WishlistItems)
+                .HasForeignKey(item => item.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.Book)
+                .WithMany(book => book.WishlistItems)
                 .HasForeignKey(item => item.BookId)
                 .OnDelete(DeleteBehavior.Restrict);
         });

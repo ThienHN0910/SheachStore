@@ -7,6 +7,7 @@ import '../models/review_models.dart';
 import '../services/book_service.dart';
 import '../services/cart_service.dart';
 import '../services/review_service.dart';
+import '../services/wishlist_service.dart';
 import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
 
@@ -23,6 +24,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   final _bookService = BookService();
   final _cartService = CartService();
   final _reviewService = ReviewService();
+  final _wishlistService = WishlistService();
   final _commentController = TextEditingController();
 
   late Future<_BookDetailData> _detailFuture;
@@ -30,6 +32,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   var _rating = 5;
   var _isAddingToCart = false;
   var _isSubmittingReview = false;
+  var _isFavorite = false;
+  var _isTogglingFavorite = false;
 
   @override
   void initState() {
@@ -47,17 +51,50 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     final results = await Future.wait([
       _bookService.getBook(widget.bookId),
       _reviewService.getReviewsByBook(widget.bookId),
+      _wishlistService.checkWishlist(widget.bookId),
     ]);
+
+    final isFav = results[2] as bool;
+    _isFavorite = isFav;
 
     return _BookDetailData(
       book: results[0] as BookResponse,
       reviews: results[1] as List<ReviewResponse>,
+      isFavorite: isFav,
     );
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isTogglingFavorite) return;
+
+    setState(() {
+      _isTogglingFavorite = true;
+      _isFavorite = !_isFavorite;
+    });
+
+    try {
+      if (_isFavorite) {
+        await _wishlistService.addToWishlist(widget.bookId);
+      } else {
+        await _wishlistService.removeFromWishlist(widget.bookId);
+      }
+    } catch (error) {
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+      _showError(error.toString());
+    } finally {
+      setState(() {
+        _isTogglingFavorite = false;
+      });
+    }
   }
 
   void _refresh() {
     if (mounted) {
-      setState(() => _detailFuture = _load());
+      setState(() {
+        _detailFuture = _load();
+      });
     }
   }
 
@@ -125,25 +162,43 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Book details')),
-      body: FutureBuilder<_BookDetailData>(
-        future: _detailFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const LoadingState();
-          }
+    return FutureBuilder<_BookDetailData>(
+      future: _detailFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Book details')),
+            body: const LoadingState(),
+          );
+        }
 
-          if (snapshot.hasError) {
-            return ErrorState(
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Book details')),
+            body: ErrorState(
               message: snapshot.error.toString(),
               onRetry: _refresh,
-            );
-          }
+            ),
+          );
+        }
 
-          final data = snapshot.data!;
-          final book = data.book;
-          return ListView(
+        final data = snapshot.data!;
+        final book = data.book;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Book details'),
+            actions: [
+              IconButton(
+                tooltip: 'Wishlist',
+                onPressed: _toggleFavorite,
+                icon: Icon(
+                  _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: _isFavorite ? Colors.red : null,
+                ),
+              ),
+            ],
+          ),
+          body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               if ((book.coverUrl ?? '').isNotEmpty)
@@ -241,18 +296,23 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               else
                 ...data.reviews.map((review) => _ReviewTile(review: review)),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _BookDetailData {
-  const _BookDetailData({required this.book, required this.reviews});
+  const _BookDetailData({
+    required this.book,
+    required this.reviews,
+    required this.isFavorite,
+  });
 
   final BookResponse book;
   final List<ReviewResponse> reviews;
+  final bool isFavorite;
 }
 
 class _CoverFallback extends StatelessWidget {

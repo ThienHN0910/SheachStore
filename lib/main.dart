@@ -13,6 +13,7 @@ import 'screens/auth_screen.dart';
 import 'screens/books_screen.dart';
 import 'services/auth_service.dart';
 import 'services/book_service.dart';
+import 'services/wishlist_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,7 @@ class SheachStoreApp extends StatelessWidget {
       providers: [
         RepositoryProvider(create: (_) => BookService()),
         RepositoryProvider(create: (_) => AuthService()),
+        RepositoryProvider(create: (_) => WishlistService()),
         RepositoryProvider(
           create: (context) => BookRepository(
             bookService: context.read<BookService>(),

@@ -23,7 +23,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   void _refresh() {
-    setState(() => _ordersFuture = _orderService.getMyOrders());
+    setState(() {
+      _ordersFuture = _orderService.getMyOrders();
+    });
   }
 
   @override
