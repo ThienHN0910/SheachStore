@@ -4,7 +4,10 @@ import '../../models/catalog_models.dart';
 import '../../services/author_service.dart';
 import '../../services/book_service.dart';
 import '../../services/category_service.dart';
+import '../../widgets/add_author_dialog.dart';
+import '../../widgets/add_category_dialog.dart';
 import '../../widgets/app_states.dart';
+import '../../widgets/book_cover_selector.dart';
 
 class EditBookScreen extends StatefulWidget {
   const EditBookScreen({super.key, this.book});
@@ -20,6 +23,8 @@ class _EditBookScreenState extends State<EditBookScreen> {
   final _bookService = BookService();
   final _authorService = AuthorService();
   final _categoryService = CategoryService();
+  
+  var _isUploadingImage = false;
 
   late final TextEditingController _titleController;
   late final TextEditingController _priceController;
@@ -68,66 +73,30 @@ class _EditBookScreenState extends State<EditBookScreen> {
   }
 
   Future<void> _addNewAuthor() async {
-    final controller = TextEditingController();
-    final result = await showDialog<bool>(
+    final author = await showDialog<AuthorResponse>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Author'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Author Name'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
-        ],
-      ),
+      builder: (context) => AddAuthorDialog(authorService: _authorService),
     );
 
-    if (result == true && controller.text.trim().isNotEmpty) {
-      try {
-        final author = await _authorService.createAuthor(AuthorRequest(name: controller.text.trim()));
-        setState(() {
-          _selectedAuthorId = author.id;
-        });
-        _refreshData();
-      } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
+    if (author != null) {
+      setState(() {
+        _selectedAuthorId = author.id;
+      });
+      _refreshData();
     }
   }
 
   Future<void> _addNewCategory() async {
-    final controller = TextEditingController();
-    final result = await showDialog<bool>(
+    final category = await showDialog<CategoryResponse>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Category'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Category Name'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
-        ],
-      ),
+      builder: (context) => AddCategoryDialog(categoryService: _categoryService),
     );
 
-    if (result == true && controller.text.trim().isNotEmpty) {
-      final name = controller.text.trim();
-      final slug = name.toLowerCase().replaceAll(' ', '-');
-      try {
-        final category = await _categoryService.createCategory(CategoryRequest(name: name, slug: slug));
-        setState(() {
-          _selectedCategoryId = category.id;
-        });
-        _refreshData();
-      } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
+    if (category != null) {
+      setState(() {
+        _selectedCategoryId = category.id;
+      });
+      _refreshData();
     }
   }
 
@@ -210,7 +179,7 @@ class _EditBookScreenState extends State<EditBookScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<int>(
-                        value: _selectedAuthorId,
+                        initialValue: _selectedAuthorId,
                         decoration: const InputDecoration(labelText: 'Author'),
                         items: authors.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
                         onChanged: (v) => setState(() => _selectedAuthorId = v),
@@ -229,7 +198,7 @@ class _EditBookScreenState extends State<EditBookScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<int>(
-                        value: _selectedCategoryId,
+                        initialValue: _selectedCategoryId,
                         decoration: const InputDecoration(labelText: 'Category'),
                         items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
                         onChanged: (v) => setState(() => _selectedCategoryId = v),
@@ -265,9 +234,16 @@ class _EditBookScreenState extends State<EditBookScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _coverUrlController,
-                  decoration: const InputDecoration(labelText: 'Cover Image URL'),
+                BookCoverSelector(
+                  initialCoverUrl: _coverUrlController.text,
+                  onCoverUrlChanged: (url) {
+                    _coverUrlController.text = url;
+                  },
+                  onUploadStateChanged: (isUploading) {
+                    setState(() {
+                      _isUploadingImage = isUploading;
+                    });
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -277,7 +253,7 @@ class _EditBookScreenState extends State<EditBookScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: _isSubmitting ? null : _submit,
+                  onPressed: (_isSubmitting || _isUploadingImage) ? null : _submit,
                   child: Text(_isSubmitting ? 'Saving...' : 'Save Book'),
                 ),
               ],
