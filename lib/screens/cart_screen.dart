@@ -144,7 +144,9 @@ class _CartScreenState extends State<CartScreen> {
       body: FutureBuilder<CartResponse>(
         future: _cartFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
+          final isWaiting = snapshot.connectionState != ConnectionState.done;
+
+          if (isWaiting && !snapshot.hasData) {
             return const LoadingState();
           }
 
@@ -163,9 +165,13 @@ class _CartScreenState extends State<CartScreen> {
             );
           }
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
+          return Column(
             children: [
+              if (isWaiting) const LinearProgressIndicator(),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
               ...cart.items.map(
                 (item) => Card(
                   child: Padding(
@@ -183,7 +189,7 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                             IconButton(
                               tooltip: 'Remove',
-                              onPressed: () => _removeItem(item.id),
+                              onPressed: isWaiting ? null : () => _removeItem(item.id),
                               icon: const Icon(Icons.delete_outline),
                             ),
                           ],
@@ -193,7 +199,7 @@ class _CartScreenState extends State<CartScreen> {
                         Row(
                           children: [
                             IconButton.outlined(
-                              onPressed: () =>
+                              onPressed: isWaiting ? null : () =>
                                   _updateQuantity(item, item.quantity - 1),
                               icon: const Icon(Icons.remove),
                             ),
@@ -205,7 +211,7 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             ),
                             IconButton.outlined(
-                              onPressed: () =>
+                              onPressed: isWaiting ? null : () =>
                                   _updateQuantity(item, item.quantity + 1),
                               icon: const Icon(Icons.add),
                             ),
@@ -269,6 +275,9 @@ class _CartScreenState extends State<CartScreen> {
                 onPressed: _isCheckingOut ? null : _clearCart,
                 icon: const Icon(Icons.remove_shopping_cart_outlined),
                 label: const Text('Clear cart'),
+              ),
+                  ],
+                ),
               ),
             ],
           );
