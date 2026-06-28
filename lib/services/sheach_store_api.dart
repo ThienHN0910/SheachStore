@@ -16,3 +16,4 @@ export 'cart_service.dart';
 export 'category_service.dart';
 export 'order_service.dart';
 export 'review_service.dart';
+export 'wishlist_service.dart';

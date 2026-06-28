@@ -13,6 +13,7 @@ import '../widgets/formatters.dart';
 import 'book_detail_screen.dart';
 import 'cart_screen.dart';
 import 'orders_screen.dart';
+import 'wishlist_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 
 class BooksScreen extends StatefulWidget {
@@ -67,6 +68,16 @@ class _BooksScreenState extends State<BooksScreen> {
               MaterialPageRoute(builder: (_) => const OrdersScreen()),
             ),
             icon: const Icon(Icons.receipt_long_outlined),
+          ),
+          IconButton(
+            tooltip: 'Wishlist',
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WishlistScreen()),
+              );
+              _refresh();
+            },
+            icon: const Icon(Icons.favorite_border),
           ),
           IconButton(
             tooltip: 'Cart',

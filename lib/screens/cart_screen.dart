@@ -38,7 +38,9 @@ class _CartScreenState extends State<CartScreen> {
 
   void _refresh() {
     if (mounted) {
-      setState(() => _cartFuture = _cartService.getCart());
+      setState(() {
+        _cartFuture = _cartService.getCart();
+      });
     }
   }
 

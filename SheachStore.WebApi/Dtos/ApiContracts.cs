@@ -72,3 +72,5 @@ public record CartItemRequest(int BookId, [Range(1, int.MaxValue)] int Quantity)
 public record UpdateCartItemRequest([Range(1, int.MaxValue)] int Quantity);
 public record CartItemResponse(int Id, int BookId, string? BookTitle, int Quantity, decimal UnitPrice, decimal LineTotal);
 public record CartResponse(int Id, string UserId, DateTime UpdatedAt, List<CartItemResponse> Items, decimal TotalAmount);
+
+public record WishlistRequest([Required] int BookId);

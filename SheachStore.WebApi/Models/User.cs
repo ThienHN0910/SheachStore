@@ -12,4 +12,5 @@ public class User : IdentityUser
     public ICollection<Order> Orders { get; set; } = new List<Order>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public Cart? Cart { get; set; }
+    public ICollection<WishlistItem> WishlistItems { get; set; } = new List<WishlistItem>();
 }
