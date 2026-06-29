@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'core/theme.dart';
 
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
@@ -55,16 +56,7 @@ class SheachStoreApp extends StatelessWidget {
         child: MaterialApp(
           title: 'SheachStore',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF0F766E),
-              brightness: Brightness.light,
-            ),
-            useMaterial3: true,
-            inputDecorationTheme: const InputDecorationTheme(
-              border: OutlineInputBorder(),
-            ),
-          ),
+          theme: AppTheme.lightTheme,
           home: const _AppGate(),
         ),
       ),

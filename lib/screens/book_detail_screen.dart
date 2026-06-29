@@ -162,19 +162,21 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return FutureBuilder<_BookDetailData>(
       future: _detailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Book details')),
+            appBar: AppBar(title: const Text('Book Details')),
             body: const LoadingState(),
           );
         }
 
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Book details')),
+            appBar: AppBar(title: const Text('Book Details')),
             body: ErrorState(
               message: snapshot.error.toString(),
               onRetry: _refresh,
@@ -184,9 +186,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
         final data = snapshot.data!;
         final book = data.book;
+        final isOutOfStock = book.stock == 0;
+
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Book details'),
+            title: const Text('Book Details'),
             actions: [
               IconButton(
                 tooltip: 'Wishlist',
@@ -199,102 +203,272 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             ],
           ),
           body: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             children: [
-              if ((book.coverUrl ?? '').isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Image.network(
-                      book.coverUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const _CoverFallback(),
+              // Beautiful centered vertical cover
+              Center(
+                child: Hero(
+                  tag: 'book_cover_${book.id}',
+                  child: Container(
+                    height: 250,
+                    width: 175,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: (book.coverUrl ?? '').isNotEmpty
+                          ? Image.network(
+                              book.coverUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const _CoverFallback(),
+                            )
+                          : const _CoverFallback(),
                     ),
                   ),
-                )
-              else
-                const _CoverFallback(),
-              const SizedBox(height: 16),
-              Text(
-                book.title,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                [
-                  if (book.authorName != null) book.authorName!,
-                  if (book.categoryName != null) book.categoryName!,
-                ].join(' • '),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                formatMoney(book.price),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text('${book.stock} in stock'),
-              if ((book.description ?? '').isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(book.description!),
-              ],
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  IconButton.outlined(
-                    onPressed: _quantity > 1
-                        ? () => setState(() => _quantity--)
-                        : null,
-                    icon: const Icon(Icons.remove),
-                  ),
-                  SizedBox(
-                    width: 48,
+              const SizedBox(height: 24),
+              // Category tag (small)
+              if (book.categoryName != null)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Text(
-                      '$_quantity',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      book.categoryName!.toUpperCase(),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                        letterSpacing: 0.8,
+                      ),
                     ),
                   ),
-                  IconButton.outlined(
-                    onPressed: _quantity < book.stock
-                        ? () => setState(() => _quantity++)
-                        : null,
-                    icon: const Icon(Icons.add),
+                ),
+              const SizedBox(height: 12),
+              // Title
+              Text(
+                book.title,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              // Author
+              if (book.authorName != null)
+                Text(
+                  'By ${book.authorName}',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
-                  const SizedBox(width: 12),
+                ),
+              const SizedBox(height: 16),
+              // Price and Stock summary card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        Text(
+                          'PRICE',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          formatMoney(book.price),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: 1,
+                      height: 32,
+                      color: theme.colorScheme.outlineVariant,
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          'AVAILABILITY',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isOutOfStock ? 'Out of Stock' : '${book.stock} Books Left',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: isOutOfStock ? theme.colorScheme.error : Colors.green.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Description
+              if ((book.description ?? '').isNotEmpty) ...[
+                Text(
+                  'About this book',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  book.description!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+              // Quantity selector and Add to Cart Row
+              Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.colorScheme.outline),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: _quantity > 1
+                              ? () => setState(() => _quantity--)
+                              : null,
+                          icon: const Icon(Icons.remove, size: 20),
+                        ),
+                        SizedBox(
+                          width: 32,
+                          child: Text(
+                            '$_quantity',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _quantity < book.stock
+                              ? () => setState(() => _quantity++)
+                              : null,
+                          icon: const Icon(Icons.add, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: book.stock == 0 || _isAddingToCart
+                      onPressed: isOutOfStock || _isAddingToCart
                           ? null
                           : () => _addToCart(book),
-                      icon: const Icon(Icons.add_shopping_cart),
+                      icon: const Icon(Icons.shopping_bag_outlined),
                       label: Text(
-                        _isAddingToCart ? 'Adding...' : 'Add to cart',
+                        _isAddingToCart ? 'Adding...' : 'Add to Cart',
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
-              Text('Reviews', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              _ReviewForm(
-                rating: _rating,
-                controller: _commentController,
-                isSubmitting: _isSubmittingReview,
-                onRatingChanged: (value) => setState(() => _rating = value),
-                onSubmit: _submitReview,
+              const SizedBox(height: 36),
+              // Reviews Header
+              Text(
+                'Customer Reviews',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
+              // Write a review card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Rate this book',
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    _StarRatingInput(
+                      rating: _rating,
+                      onRatingChanged: (val) => setState(() => _rating = val),
+                      enabled: !_isSubmittingReview,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _commentController,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Write a comment (optional)',
+                        hintText: 'Share what you thought about this book...',
+                        fillColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _isSubmittingReview ? null : _submitReview,
+                      icon: const Icon(Icons.rate_review_outlined),
+                      label: Text(_isSubmittingReview ? 'Submitting...' : 'Submit Review'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Reviews List
               if (data.reviews.isEmpty)
                 const EmptyState(
                   title: 'No reviews yet',
                   message: 'Be the first customer to review this book.',
                 )
               else
-                ...data.reviews.map((review) => _ReviewTile(review: review)),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: data.reviews.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    return _ReviewTile(review: data.reviews[index]);
+                  },
+                ),
             ],
           ),
         );
@@ -320,72 +494,45 @@ class _CoverFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(Icons.menu_book_outlined, size: 64),
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.menu_book_outlined,
+        size: 64,
+        color: Theme.of(context).colorScheme.outline,
       ),
     );
   }
 }
 
-class _ReviewForm extends StatelessWidget {
-  const _ReviewForm({
-    required this.rating,
-    required this.controller,
-    required this.isSubmitting,
-    required this.onRatingChanged,
-    required this.onSubmit,
-  });
-
+class _StarRatingInput extends StatelessWidget {
   final int rating;
-  final TextEditingController controller;
-  final bool isSubmitting;
   final ValueChanged<int> onRatingChanged;
-  final VoidCallback onSubmit;
+  final bool enabled;
+
+  const _StarRatingInput({
+    required this.rating,
+    required this.onRatingChanged,
+    this.enabled = true,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DropdownButtonFormField<int>(
-          initialValue: rating,
-          decoration: const InputDecoration(labelText: 'Rating'),
-          items: List.generate(5, (index) => index + 1)
-              .map(
-                (value) => DropdownMenuItem(
-                  value: value,
-                  child: Text('$value star${value == 1 ? '' : 's'}'),
-                ),
-              )
-              .toList(),
-          onChanged: isSubmitting
-              ? null
-              : (value) {
-                  if (value != null) {
-                    onRatingChanged(value);
-                  }
-                },
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: controller,
-          minLines: 2,
-          maxLines: 4,
-          decoration: const InputDecoration(labelText: 'Comment'),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: isSubmitting ? null : onSubmit,
-          icon: const Icon(Icons.rate_review_outlined),
-          label: Text(isSubmitting ? 'Submitting...' : 'Submit review'),
-        ),
-      ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(5, (index) {
+        final starValue = index + 1;
+        final isSelected = starValue <= rating;
+        return IconButton(
+          icon: Icon(
+            isSelected ? Icons.star_rounded : Icons.star_border_rounded,
+            size: 32,
+          ),
+          color: isSelected ? const Color(0xFFF59E0B) : Colors.grey.shade400,
+          onPressed: enabled ? () => onRatingChanged(starValue) : null,
+        );
+      }),
     );
   }
 }
@@ -395,14 +542,102 @@ class _ReviewTile extends StatelessWidget {
 
   final ReviewResponse review;
 
+  String _getInitials(String? name) {
+    if (name == null || name.trim().isEmpty) return 'U';
+    final parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts.first[0] + parts.last[0]).toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
+  Color _getAvatarColor(String? name) {
+    if (name == null || name.isEmpty) return const Color(0xFF0F766E);
+    final colors = [
+      const Color(0xFF0F766E), // Teal
+      const Color(0xFF0284C7), // Sky Blue
+      const Color(0xFF7C3AED), // Violet
+      const Color(0xFFDB2777), // Pink
+      const Color(0xFFEA580C), // Orange
+      const Color(0xFF059669), // Emerald
+    ];
+    final hash = name.hashCode.abs();
+    return colors[hash % colors.length];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final initials = _getInitials(review.userFullName);
+    final avatarColor = _getAvatarColor(review.userFullName);
+
     return Card(
-      child: ListTile(
-        leading: CircleAvatar(child: Text(review.rating.toString())),
-        title: Text(review.userFullName ?? 'Customer'),
-        subtitle: Text(review.comment ?? 'No comment'),
-        trailing: Text(formatDate(review.createdAt)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              backgroundColor: avatarColor,
+              radius: 20,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        review.userFullName ?? 'Customer',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        formatDate(review.createdAt),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: List.generate(5, (starIdx) {
+                      return Icon(
+                        starIdx < review.rating ? Icons.star_rounded : Icons.star_border_rounded,
+                        color: const Color(0xFFF59E0B),
+                        size: 16,
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    review.comment ?? 'No comment',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

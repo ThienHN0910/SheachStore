@@ -8,6 +8,8 @@ import '../blocs/book/book_bloc.dart';
 import '../blocs/book/book_event.dart';
 import '../blocs/book/book_state.dart';
 import '../models/api_enums.dart';
+import '../models/catalog_models.dart';
+import '../services/category_service.dart';
 import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
 import 'book_detail_screen.dart';
@@ -25,6 +27,17 @@ class BooksScreen extends StatefulWidget {
 
 class _BooksScreenState extends State<BooksScreen> {
   final _searchController = TextEditingController();
+  final _categoryService = CategoryService();
+
+  List<CategoryResponse> _categories = [];
+  int? _selectedCategoryId;
+  bool _isLoadingCategories = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
 
   @override
   void dispose() {
@@ -32,7 +45,29 @@ class _BooksScreenState extends State<BooksScreen> {
     super.dispose();
   }
 
+  Future<void> _loadCategories() async {
+    if (!mounted) return;
+    setState(() => _isLoadingCategories = true);
+    try {
+      final categories = await _categoryService.getCategories();
+      if (mounted) {
+        setState(() {
+          _categories = categories;
+        });
+      }
+    } catch (e) {
+      // Fail silently, falls back to showing only catalog
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingCategories = false);
+      }
+    }
+  }
+
   void _refresh() {
+    setState(() {
+      _selectedCategoryId = null;
+    });
     context.read<BookBloc>().add(FetchBooks());
   }
 
@@ -42,9 +77,12 @@ class _BooksScreenState extends State<BooksScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('SheachStore'),
+        centerTitle: false,
         actions: [
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, state) {
@@ -98,7 +136,7 @@ class _BooksScreenState extends State<BooksScreen> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -113,14 +151,16 @@ class _BooksScreenState extends State<BooksScreen> {
                 ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 filled: true,
-                fillColor:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor: theme.colorScheme.surfaceContainerHighest,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                   borderSide: BorderSide.none,
                 ),
               ),
               onChanged: (value) {
+                setState(() {
+                  _selectedCategoryId = null;
+                });
                 context.read<BookBloc>().add(SearchBooks(value));
               },
             ),
@@ -131,104 +171,280 @@ class _BooksScreenState extends State<BooksScreen> {
         onRefresh: () async {
           _refresh();
         },
-        child: BlocBuilder<BookBloc, BookState>(
-          builder: (context, state) {
-            if (state is BookLoading) {
-              return const LoadingState();
-            }
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCategoryFilterRow(theme),
+            Expanded(
+              child: BlocBuilder<BookBloc, BookState>(
+                builder: (context, state) {
+                  if (state is BookLoading) {
+                    return const LoadingState();
+                  }
 
-            if (state is BookError) {
-              return ErrorState(
-                message: state.message,
-                onRetry: _refresh,
-                onLogout: _logout,
-              );
-            }
+                  if (state is BookError) {
+                    return ErrorState(
+                      message: state.message,
+                      onRetry: _refresh,
+                      onLogout: _logout,
+                    );
+                  }
 
-            if (state is BookLoaded) {
-              final books = state.books;
-              if (books.isEmpty) {
-                return ListView(
-                  children: const [
-                    SizedBox(height: 100),
-                    EmptyState(
-                      title: 'No books found',
-                      message:
-                          'Try a different search term or check back later.',
-                    ),
-                  ],
-                );
-              }
-
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: books.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final book = books[index];
-                  return Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: ListTile(
-                      onTap: () async {
-                        await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BookDetailScreen(bookId: book.id),
+                  if (state is BookLoaded) {
+                    final books = state.books;
+                    if (books.isEmpty) {
+                      return ListView(
+                        children: const [
+                          SizedBox(height: 100),
+                          EmptyState(
+                            title: 'No books found',
+                            message: 'Try a different search term or check back later.',
                           ),
-                        );
-                        _refresh();
-                      },
-                      leading: _BookCover(url: book.coverUrl),
-                      title: Text(book.title),
-                      subtitle: Text(
-                        [
-                          if (book.authorName != null) book.authorName!,
-                          if (book.categoryName != null) book.categoryName!,
-                          '${book.stock} in stock',
-                        ].join(' • '),
-                      ),
-                      trailing: Text(
-                        formatMoney(book.price),
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                    ),
-                  );
-                },
-              );
-            }
+                        ],
+                      );
+                    }
 
-            return const SizedBox.shrink();
-          },
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      itemCount: books.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final book = books[index];
+                        return _BookCard(
+                          book: book,
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => BookDetailScreen(bookId: book.id),
+                              ),
+                            );
+                            _refresh();
+                          },
+                        );
+                      },
+                    );
+                  }
+
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilterRow(ThemeData theme) {
+    if (_isLoadingCategories && _categories.isEmpty) {
+      return const SizedBox(
+        height: 52,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (_categories.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 52,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _categories.length + 1,
+        itemBuilder: (context, index) {
+          final isAll = index == 0;
+          final category = isAll ? null : _categories[index - 1];
+          final isSelected = isAll ? _selectedCategoryId == null : _selectedCategoryId == category!.id;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(isAll ? 'All Books' : category!.name),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    _selectedCategoryId = isAll ? null : category!.id;
+                  });
+                  _searchController.clear();
+                  if (isAll) {
+                    context.read<BookBloc>().add(FetchBooks());
+                  } else {
+                    context.read<BookBloc>().add(FilterByCategory(category!.id));
+                  }
+                }
+              },
+              selectedColor: theme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.surface,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isSelected ? Colors.transparent : theme.colorScheme.outlineVariant,
+                ),
+              ),
+              showCheckmark: false,
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class _BookCover extends StatelessWidget {
-  const _BookCover({this.url});
+class _BookCard extends StatelessWidget {
+  final BookResponse book;
+  final VoidCallback onTap;
 
-  final String? url;
+  const _BookCard({required this.book, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final placeholder = Container(
-      width: 48,
-      height: 64,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Icon(Icons.menu_book_outlined),
+    final theme = Theme.of(context);
+    final isOutOfStock = book.stock == 0;
+
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cover thumbnail with subtle shadow and round corners
+              Container(
+                width: 80,
+                height: 110,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: book.coverUrl != null && book.coverUrl!.isNotEmpty
+                      ? Image.network(
+                          book.coverUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildCoverPlaceholder(theme),
+                        )
+                      : _buildCoverPlaceholder(theme),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (book.authorName != null)
+                      Text(
+                        book.authorName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (book.categoryName != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              book.categoryName!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isOutOfStock
+                                ? theme.colorScheme.errorContainer
+                                : Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isOutOfStock ? 'Out of stock' : '${book.stock} in stock',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isOutOfStock ? theme.colorScheme.error : Colors.green.shade700,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          formatMoney(book.price),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
 
-    if (url == null || url!.isEmpty) {
-      return placeholder;
-    }
-
-    return SizedBox(
-      width: 48,
-      height: 64,
-      child: Image.network(
-        url!,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => placeholder,
+  Widget _buildCoverPlaceholder(ThemeData theme) {
+    return Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(
+        Icons.menu_book_outlined,
+        color: theme.colorScheme.outline,
+        size: 32,
       ),
     );
   }
