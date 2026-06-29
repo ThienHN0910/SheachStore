@@ -11,16 +11,6 @@ String formatDate(DateTime value) {
   return '$day/$month/${local.year}';
 }
 
-String paymentMethodLabel(PaymentMethod method) {
-  return switch (method) {
-    PaymentMethod.cashOnDelivery => 'Cash on delivery',
-    PaymentMethod.bankTransfer => 'Bank transfer',
-    PaymentMethod.card => 'Card',
-    PaymentMethod.momo => 'Momo',
-    PaymentMethod.payOs => 'PayOS',
-  };
-}
-
 String orderStatusLabel(OrderStatus status) {
   return switch (status) {
     OrderStatus.pending => 'Pending',

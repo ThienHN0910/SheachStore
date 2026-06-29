@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api/api_exception.dart';
-import '../models/api_enums.dart';
 import '../models/cart_models.dart';
 import '../models/order_models.dart';
 import '../services/cart_service.dart';
@@ -23,7 +22,6 @@ class _CartScreenState extends State<CartScreen> {
   final _cartService = CartService();
   final _orderService = OrderService();
   late Future<CartResponse> _cartFuture;
-  var _paymentMethod = PaymentMethod.cashOnDelivery;
   var _isCheckingOut = false;
 
   @override
@@ -89,58 +87,32 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _checkout(CartResponse cart) async {
     setState(() => _isCheckingOut = true);
     try {
-      if (_paymentMethod == PaymentMethod.payOs) {
-        final result = await _orderService.createPayOsOrder(
-          CreateOrderRequest(
-            paymentMethod: _paymentMethod,
-            shippingAddress: _quickShippingAddress,
-            items: cart.items
-                .map(
-                  (item) => CreateOrderItemRequest(
-                    bookId: item.bookId,
-                    quantity: item.quantity,
-                  ),
-                )
-                .toList(),
-          ),
+      final result = await _orderService.createPayOsOrder(
+        CreateOrderRequest(
+          shippingAddress: _quickShippingAddress,
+          items: cart.items
+              .map(
+                (item) => CreateOrderItemRequest(
+                  bookId: item.bookId,
+                  quantity: item.quantity,
+                ),
+              )
+              .toList(),
+        ),
+      );
+
+      final uri = Uri.parse(result.checkoutUrl);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        throw Exception('Could not open PayOS checkout.');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(
+          const SnackBar(content: Text('PayOS checkout opened in browser.')),
         );
-
-        final uri = Uri.parse(result.checkoutUrl);
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (!launched) {
-          throw Exception('Could not open PayOS checkout.');
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(
-            const SnackBar(content: Text('PayOS checkout opened in browser.')),
-          );
-        }
-      } else {
-        await _orderService.createOrder(
-          CreateOrderRequest(
-            paymentMethod: _paymentMethod,
-            shippingAddress: _quickShippingAddress,
-            items: cart.items
-                .map(
-                  (item) => CreateOrderItemRequest(
-                    bookId: item.bookId,
-                    quantity: item.quantity,
-                  ),
-                )
-                .toList(),
-          ),
-        );
-
-        await _cartService.clearCart();
-        _refresh();
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Order created')));
-        }
       }
     } on ApiException catch (error) {
       _showError(error.message);
@@ -261,38 +233,6 @@ class _CartScreenState extends State<CartScreen> {
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Shipping address is auto-filled as "Mua nhanh" for faster checkout.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<PaymentMethod>(
-                initialValue: _paymentMethod,
-                decoration: const InputDecoration(labelText: 'Payment method'),
-                items: PaymentMethod.values
-                    .map(
-                      (method) => DropdownMenuItem(
-                        value: method,
-                        child: Text(paymentMethodLabel(method)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _isCheckingOut
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          setState(() => _paymentMethod = value);
-                        }
-                      },
-              ),
-              if (_paymentMethod == PaymentMethod.payOs)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text(
-                    'PayOS sẽ mở ra trang thanh toán bên ngoài sau khi đặt hàng.',
-                  ),
-                ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _isCheckingOut ? null : () => _checkout(cart),

@@ -13,18 +13,15 @@ class CreateOrderItemRequest {
 
 class CreateOrderRequest {
   const CreateOrderRequest({
-    required this.paymentMethod,
     required this.shippingAddress,
     required this.items,
   });
 
-  final PaymentMethod paymentMethod;
   final String shippingAddress;
   final List<CreateOrderItemRequest> items;
 
   Map<String, dynamic> toJson() {
     return {
-      'paymentMethod': paymentMethod.value,
       'shippingAddress': shippingAddress,
       'items': items.map((item) => item.toJson()).toList(),
     };
@@ -77,7 +74,6 @@ class OrderResponse {
     this.userFullName,
     required this.totalAmount,
     required this.status,
-    required this.paymentMethod,
     required this.shippingAddress,
     required this.createdAt,
     required this.items,
@@ -88,7 +84,6 @@ class OrderResponse {
   final String? userFullName;
   final double totalAmount;
   final OrderStatus status;
-  final PaymentMethod paymentMethod;
   final String shippingAddress;
   final DateTime createdAt;
   final List<OrderItemResponse> items;
@@ -100,7 +95,6 @@ class OrderResponse {
       userFullName: json['userFullName'] as String?,
       totalAmount: (json['totalAmount'] as num).toDouble(),
       status: OrderStatus.fromJson(json['status'] as String),
-      paymentMethod: PaymentMethod.fromJson(json['paymentMethod'] as String),
       shippingAddress: json['shippingAddress'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
       items: (json['items'] as List<dynamic>)

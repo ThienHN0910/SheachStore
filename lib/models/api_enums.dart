@@ -25,18 +25,3 @@ enum OrderStatus {
     return OrderStatus.values.firstWhere((status) => status.value == value);
   }
 }
-
-enum PaymentMethod {
-  cashOnDelivery('CashOnDelivery'),
-  bankTransfer('BankTransfer'),
-  card('Card'),
-  momo('Momo'),
-  payOs('PayOs');
-
-  const PaymentMethod(this.value);
-  final String value;
-
-  static PaymentMethod fromJson(String value) {
-    return PaymentMethod.values.firstWhere((method) => method.value == value);
-  }
-}
