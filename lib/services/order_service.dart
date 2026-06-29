@@ -44,6 +44,15 @@ class OrderService {
     );
   }
 
+  Future<PayOsCheckoutResponse> createPayOsOrder(CreateOrderRequest request) {
+    return _apiClient.post(
+      '/api/orders/payos',
+      request.toJson(),
+      (json) => PayOsCheckoutResponse.fromJson(json as Map<String, dynamic>),
+      authorized: true,
+    );
+  }
+
   Future<void> updateStatus(int id, OrderStatus status) {
     return _apiClient.patch(
       '/api/orders/$id/status',

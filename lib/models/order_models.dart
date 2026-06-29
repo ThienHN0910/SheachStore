@@ -111,3 +111,23 @@ class OrderResponse {
     );
   }
 }
+
+class PayOsCheckoutResponse {
+  const PayOsCheckoutResponse({
+    required this.orderId,
+    required this.checkoutUrl,
+    this.qrCodeUrl,
+  });
+
+  final int orderId;
+  final String checkoutUrl;
+  final String? qrCodeUrl;
+
+  factory PayOsCheckoutResponse.fromJson(Map<String, dynamic> json) {
+    return PayOsCheckoutResponse(
+      orderId: json['orderId'] as int,
+      checkoutUrl: json['checkoutUrl'] as String,
+      qrCodeUrl: json['qrCodeUrl'] as String?,
+    );
+  }
+}

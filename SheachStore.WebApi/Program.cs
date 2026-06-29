@@ -42,6 +42,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<ICartRepository, CartRepository>();
+builder.Services.AddHttpClient<SheachStore.WebApi.Services.IPayOsService, SheachStore.WebApi.Services.PayOsService>();
 
 builder.Services.AddMemoryCache();
 

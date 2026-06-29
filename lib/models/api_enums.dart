@@ -30,7 +30,8 @@ enum PaymentMethod {
   cashOnDelivery('CashOnDelivery'),
   bankTransfer('BankTransfer'),
   card('Card'),
-  momo('Momo');
+  momo('Momo'),
+  payOs('PayOs');
 
   const PaymentMethod(this.value);
   final String value;

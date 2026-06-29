@@ -6,6 +6,7 @@ using SheachStore.WebApi.Data;
 using SheachStore.WebApi.Dtos;
 using SheachStore.WebApi.Models;
 using SheachStore.WebApi.Repositories;
+using SheachStore.WebApi.Services;
 
 namespace SheachStore.WebApi.Controllers;
 
@@ -16,11 +17,13 @@ public class OrdersController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly IOrderRepository _orderRepository;
+    private readonly IPayOsService _payOsService;
 
-    public OrdersController(AppDbContext dbContext, IOrderRepository orderRepository)
+    public OrdersController(AppDbContext dbContext, IOrderRepository orderRepository, IPayOsService payOsService)
     {
         _dbContext = dbContext;
         _orderRepository = orderRepository;
+        _payOsService = payOsService;
     }
 
     [Authorize(Roles = "Admin")]
@@ -58,6 +61,11 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<OrderResponse>> Create(CreateOrderRequest request, CancellationToken cancellationToken)
     {
+        if (request.PaymentMethod == PaymentMethod.PayOs)
+        {
+            return BadRequest("Use POST /api/orders/payos for PayOS checkout.");
+        }
+
         if (request.Items.Count == 0)
         {
             return BadRequest("Order must contain at least one item.");
@@ -106,6 +114,70 @@ public class OrdersController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = order.Id }, created!.ToResponse());
     }
 
+    [HttpPost("payos")]
+    public async Task<ActionResult<PayOsCheckoutResponse>> CreatePayOs(CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Items.Count == 0)
+        {
+            return BadRequest("Order must contain at least one item.");
+        }
+
+        if (request.PaymentMethod != PaymentMethod.PayOs)
+        {
+            return BadRequest("Payment method must be PayOs.");
+        }
+
+        var bookIds = request.Items.Select(item => item.BookId).Distinct().ToList();
+        var books = await _dbContext.Books.Where(book => bookIds.Contains(book.Id)).ToListAsync(cancellationToken);
+        if (books.Count != bookIds.Count)
+        {
+            return BadRequest("One or more books do not exist.");
+        }
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var orderItems = new List<OrderItem>();
+        foreach (var item in request.Items)
+        {
+            var book = books.Single(book => book.Id == item.BookId);
+            if (book.Stock < item.Quantity)
+            {
+                return BadRequest($"Book '{book.Title}' does not have enough stock.");
+            }
+
+            book.Stock -= item.Quantity;
+            orderItems.Add(new OrderItem
+            {
+                BookId = book.Id,
+                Quantity = item.Quantity,
+                UnitPrice = book.Price
+            });
+        }
+
+        var order = new Order
+        {
+            UserId = GetUserId(),
+            PaymentMethod = PaymentMethod.PayOs,
+            ShippingAddress = request.ShippingAddress,
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            OrderItems = orderItems,
+            TotalAmount = orderItems.Sum(item => item.Quantity * item.UnitPrice)
+        };
+
+        await _dbContext.Orders.AddAsync(order, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var checkout = await _payOsService.CreateCheckoutAsync(
+            order.Id,
+            order.TotalAmount,
+            $"Order #{order.Id}",
+            cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = order.Id }, checkout);
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpPatch("{id:int}/status")]
     public async Task<IActionResult> UpdateStatus(int id, UpdateOrderStatusRequest request, CancellationToken cancellationToken)
@@ -121,6 +193,38 @@ public class OrdersController : ControllerBase
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
         return NoContent();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("/api/payos/webhook")]
+    public async Task<IActionResult> PayOsWebhook(PayOsWebhookRequest request, CancellationToken cancellationToken)
+    {
+        if (!_payOsService.VerifyWebhookSignature(request))
+        {
+            return BadRequest("Invalid PayOS signature.");
+        }
+
+        if (!string.Equals(request.Data?.Status, "PAID", StringComparison.OrdinalIgnoreCase))
+        {
+            return Ok();
+        }
+
+        if (!int.TryParse(request.Data?.OrderCode, out var orderId))
+        {
+            return BadRequest("Invalid order code.");
+        }
+
+        var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        order.Status = OrderStatus.Paid;
+        _orderRepository.Update(order);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return Ok();
     }
 
     private string GetUserId()

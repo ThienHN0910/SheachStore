@@ -53,6 +53,12 @@ public record OrderResponse(
     DateTime CreatedAt,
     List<OrderItemResponse> Items);
 
+public record PayOsCheckoutResponse(int OrderId, string CheckoutUrl, string? QrCodeUrl);
+
+public record PayOsWebhookRequest(string? Code, string? Desc, PayOsWebhookData? Data, string? Signature);
+
+public record PayOsWebhookData(string? OrderCode, string? Status, decimal? Amount, string? Description);
+
 public record ReviewRequest(
     int BookId,
     [Range(1, 5)] int Rating,

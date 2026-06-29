@@ -17,6 +17,7 @@ String paymentMethodLabel(PaymentMethod method) {
     PaymentMethod.bankTransfer => 'Bank transfer',
     PaymentMethod.card => 'Card',
     PaymentMethod.momo => 'Momo',
+    PaymentMethod.payOs => 'PayOS',
   };
 }
 
