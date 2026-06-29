@@ -58,56 +58,6 @@ public class OrdersController : ControllerBase
         return Ok(order.ToResponse());
     }
 
-    [HttpPost]
-    public async Task<ActionResult<OrderResponse>> Create(CreateOrderRequest request, CancellationToken cancellationToken)
-    {
-        if (request.Items.Count == 0)
-        {
-            return BadRequest("Order must contain at least one item.");
-        }
-
-        var bookIds = request.Items.Select(item => item.BookId).Distinct().ToList();
-        var books = await _dbContext.Books.Where(book => bookIds.Contains(book.Id)).ToListAsync(cancellationToken);
-        if (books.Count != bookIds.Count)
-        {
-            return BadRequest("One or more books do not exist.");
-        }
-
-        var orderItems = new List<OrderItem>();
-        foreach (var item in request.Items)
-        {
-            var book = books.Single(book => book.Id == item.BookId);
-            if (book.Stock < item.Quantity)
-            {
-                return BadRequest($"Book '{book.Title}' does not have enough stock.");
-            }
-
-            book.Stock -= item.Quantity;
-            orderItems.Add(new OrderItem
-            {
-                BookId = book.Id,
-                Quantity = item.Quantity,
-                UnitPrice = book.Price
-            });
-        }
-
-        var order = new Order
-        {
-            UserId = GetUserId(),
-            ShippingAddress = request.ShippingAddress,
-            Status = OrderStatus.Pending,
-            CreatedAt = DateTime.UtcNow,
-            OrderItems = orderItems,
-            TotalAmount = orderItems.Sum(item => item.Quantity * item.UnitPrice)
-        };
-
-        await _dbContext.Orders.AddAsync(order, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        var created = await _orderRepository.GetByIdWithDetailsAsync(order.Id, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = order.Id }, created!.ToResponse());
-    }
-
     [HttpPost("payos")]
     public async Task<ActionResult<PayOsCheckoutResponse>> CreatePayOs(CreateOrderRequest request, CancellationToken cancellationToken)
     {
@@ -211,6 +161,15 @@ public class OrdersController : ControllerBase
         order.Status = OrderStatus.Paid;
         _orderRepository.Update(order);
         await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        // Clear the user's cart after successful payment
+        var cart = await _dbContext.Carts.Include(c => c.CartItems)
+            .FirstOrDefaultAsync(c => c.UserId == order.UserId, cancellationToken);
+        if (cart is not null)
+        {
+            _dbContext.CartItems.RemoveRange(cart.CartItems);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         return Ok();
     }

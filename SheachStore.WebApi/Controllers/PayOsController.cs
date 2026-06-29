@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SheachStore.WebApi.Data;
+using SheachStore.WebApi.Models;
 
 namespace SheachStore.WebApi.Controllers;
 
@@ -30,8 +33,26 @@ public class PayOsController : ControllerBase
 
     [AcceptVerbs("GET", "POST")]
     [Route("cancel")]
-    public ContentResult Cancel()
+    public async Task<IActionResult> Cancel([FromQuery] int? orderCode, [FromServices] AppDbContext dbContext, CancellationToken cancellationToken)
     {
+        if (orderCode.HasValue)
+        {
+            var order = await dbContext.Orders.Include(o => o.OrderItems).FirstOrDefaultAsync(o => o.Id == orderCode.Value, cancellationToken);
+            if (order is not null && order.Status == OrderStatus.Pending)
+            {
+                order.Status = OrderStatus.Cancelled;
+                foreach (var item in order.OrderItems)
+                {
+                    var book = await dbContext.Books.FindAsync(new object[] { item.BookId }, cancellationToken);
+                    if (book is not null)
+                    {
+                        book.Stock += item.Quantity;
+                    }
+                }
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+
         return Content("""
 <!doctype html>
 <html>

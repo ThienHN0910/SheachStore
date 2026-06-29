@@ -70,9 +70,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 return Card(
                   child: ExpansionTile(
                     title: Text('Order #${order.id}'),
-                    subtitle: Text(
-                      '${formatDate(order.createdAt)} • ${orderStatusLabel(order.status)}',
-                    ),
+                    subtitle: Text(formatDate(order.createdAt)),
                     trailing: Text(formatMoney(order.totalAmount)),
                     children: [
                       ...order.items.map(
@@ -82,16 +80,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             '${item.quantity} x ${formatMoney(item.unitPrice)}',
                           ),
                           trailing: Text(formatMoney(item.lineTotal)),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Ship to: ${order.shippingAddress}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
                         ),
                       ),
                     ],

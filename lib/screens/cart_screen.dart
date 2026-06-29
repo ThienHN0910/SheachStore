@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/api/api_exception.dart';
 import '../models/cart_models.dart';
 import '../models/order_models.dart';
+import 'orders_screen.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
 import '../widgets/app_states.dart';
@@ -113,6 +114,12 @@ class _CartScreenState extends State<CartScreen> {
         ).showSnackBar(
           const SnackBar(content: Text('PayOS checkout opened in browser.')),
         );
+
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const OrdersScreen()),
+        );
+        _refresh();
       }
     } on ApiException catch (error) {
       _showError(error.message);

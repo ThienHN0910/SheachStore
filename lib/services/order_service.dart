@@ -35,15 +35,6 @@ class OrderService {
     );
   }
 
-  Future<OrderResponse> createOrder(CreateOrderRequest request) {
-    return _apiClient.post(
-      '/api/orders',
-      request.toJson(),
-      (json) => OrderResponse.fromJson(json as Map<String, dynamic>),
-      authorized: true,
-    );
-  }
-
   Future<PayOsCheckoutResponse> createPayOsOrder(CreateOrderRequest request) {
     return _apiClient.post(
       '/api/orders/payos',
