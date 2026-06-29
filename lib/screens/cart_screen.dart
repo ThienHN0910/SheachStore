@@ -18,28 +18,12 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  static const _provinceOptions = <String>[
-    'Đà Nẵng',
-    'Hà Nội',
-    'TP Hồ Chí Minh',
-    'Hải Phòng',
-    'Cần Thơ',
-    'Huế',
-    'Quảng Nam',
-    'Quảng Ngãi',
-    'Khánh Hòa',
-    'Bình Định',
-  ];
+  static const _quickShippingAddress = 'Mua nhanh';
 
   final _cartService = CartService();
   final _orderService = OrderService();
-  final _streetController = TextEditingController();
-  final _wardController = TextEditingController();
-  final _districtController = TextEditingController();
-  final _provinceController = TextEditingController();
   late Future<CartResponse> _cartFuture;
   var _paymentMethod = PaymentMethod.cashOnDelivery;
-  String? _selectedProvince;
   var _isCheckingOut = false;
 
   @override
@@ -50,10 +34,6 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   void dispose() {
-    _streetController.dispose();
-    _wardController.dispose();
-    _districtController.dispose();
-    _provinceController.dispose();
     super.dispose();
   }
 
@@ -106,40 +86,14 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  String _buildShippingAddress() {
-    final parts = [
-      _streetController.text.trim(),
-      _wardController.text.trim(),
-      _districtController.text.trim(),
-      _selectedProvince?.trim() ?? _provinceController.text.trim(),
-    ].where((part) => part.isNotEmpty).toList();
-    return parts.join(', ');
-  }
-
   Future<void> _checkout(CartResponse cart) async {
-    final address = _buildShippingAddress();
-    if (address.isEmpty) {
-      _showError('Please enter street, ward, district, and province/city.');
-      return;
-    }
-
-    final hasProvince = (_selectedProvince?.trim().isNotEmpty ?? false) ||
-        _provinceController.text.trim().isNotEmpty;
-    if (!hasProvince ||
-        _districtController.text.trim().isEmpty ||
-        _wardController.text.trim().isEmpty ||
-        _streetController.text.trim().isEmpty) {
-      _showError('Shipping address must include street, ward, district, and province/city.');
-      return;
-    }
-
     setState(() => _isCheckingOut = true);
     try {
       if (_paymentMethod == PaymentMethod.payOs) {
         final result = await _orderService.createPayOsOrder(
           CreateOrderRequest(
             paymentMethod: _paymentMethod,
-            shippingAddress: address,
+            shippingAddress: _quickShippingAddress,
             items: cart.items
                 .map(
                   (item) => CreateOrderItemRequest(
@@ -168,7 +122,7 @@ class _CartScreenState extends State<CartScreen> {
         await _orderService.createOrder(
           CreateOrderRequest(
             paymentMethod: _paymentMethod,
-            shippingAddress: address,
+            shippingAddress: _quickShippingAddress,
             items: cart.items
                 .map(
                   (item) => CreateOrderItemRequest(
@@ -181,11 +135,6 @@ class _CartScreenState extends State<CartScreen> {
         );
 
         await _cartService.clearCart();
-        _streetController.clear();
-        _wardController.clear();
-        _districtController.clear();
-        _provinceController.clear();
-        _selectedProvince = null;
         _refresh();
         if (mounted) {
           ScaffoldMessenger.of(
@@ -313,60 +262,8 @@ class _CartScreenState extends State<CartScreen> {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _streetController,
-                decoration: const InputDecoration(
-                  labelText: 'Street / house number',
-                  prefixIcon: Icon(Icons.home_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _wardController,
-                decoration: const InputDecoration(
-                  labelText: 'Ward / commune',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _districtController,
-                decoration: const InputDecoration(
-                  labelText: 'District / county',
-                  prefixIcon: Icon(Icons.map_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedProvince,
-                decoration: const InputDecoration(
-                  labelText: 'Province / city',
-                  prefixIcon: Icon(Icons.location_city_outlined),
-                ),
-                items: _provinceOptions
-                    .map(
-                      (province) => DropdownMenuItem(
-                        value: province,
-                        child: Text(province),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _isCheckingOut
-                    ? null
-                    : (value) => setState(() => _selectedProvince = value),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _provinceController,
-                decoration: const InputDecoration(
-                  labelText: 'Other province / city',
-                  prefixIcon: Icon(Icons.edit_location_alt_outlined),
-                  hintText: 'Use only if not in dropdown',
-                ),
-              ),
-              const SizedBox(height: 8),
               Text(
-                'Example: 39 Le Van Tam, Khuê Mỹ, Ngũ Hành Sơn, Đà Nẵng',
+                'Shipping address is auto-filled as "Mua nhanh" for faster checkout.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
