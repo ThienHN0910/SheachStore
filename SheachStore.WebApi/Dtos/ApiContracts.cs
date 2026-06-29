@@ -35,7 +35,6 @@ public record BookResponse(
 public record CreateOrderItemRequest(int BookId, [Range(1, int.MaxValue)] int Quantity);
 
 public record CreateOrderRequest(
-    PaymentMethod PaymentMethod,
     [Required, MaxLength(500)] string ShippingAddress,
     [MinLength(1)] List<CreateOrderItemRequest> Items);
 
@@ -48,7 +47,6 @@ public record OrderResponse(
     string UserId,
     decimal TotalAmount,
     OrderStatus Status,
-    PaymentMethod PaymentMethod,
     string ShippingAddress,
     DateTime CreatedAt,
     List<OrderItemResponse> Items);

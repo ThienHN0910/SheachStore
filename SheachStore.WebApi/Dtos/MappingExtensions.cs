@@ -47,7 +47,6 @@ public static class MappingExtensions
             order.UserId,
             order.TotalAmount,
             order.Status,
-            order.PaymentMethod,
             order.ShippingAddress,
             order.CreatedAt,
             order.OrderItems.Select(item => new OrderItemResponse(

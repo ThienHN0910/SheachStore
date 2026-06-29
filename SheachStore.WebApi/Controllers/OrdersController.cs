@@ -61,11 +61,6 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<OrderResponse>> Create(CreateOrderRequest request, CancellationToken cancellationToken)
     {
-        if (request.PaymentMethod == PaymentMethod.PayOs)
-        {
-            return BadRequest("Use POST /api/orders/payos for PayOS checkout.");
-        }
-
         if (request.Items.Count == 0)
         {
             return BadRequest("Order must contain at least one item.");
@@ -99,7 +94,6 @@ public class OrdersController : ControllerBase
         var order = new Order
         {
             UserId = GetUserId(),
-            PaymentMethod = request.PaymentMethod,
             ShippingAddress = request.ShippingAddress,
             Status = OrderStatus.Pending,
             CreatedAt = DateTime.UtcNow,
@@ -120,11 +114,6 @@ public class OrdersController : ControllerBase
         if (request.Items.Count == 0)
         {
             return BadRequest("Order must contain at least one item.");
-        }
-
-        if (request.PaymentMethod != PaymentMethod.PayOs)
-        {
-            return BadRequest("Payment method must be PayOs.");
         }
 
         var bookIds = request.Items.Select(item => item.BookId).Distinct().ToList();
@@ -157,7 +146,6 @@ public class OrdersController : ControllerBase
         var order = new Order
         {
             UserId = GetUserId(),
-            PaymentMethod = PaymentMethod.PayOs,
             ShippingAddress = request.ShippingAddress,
             Status = OrderStatus.Pending,
             CreatedAt = DateTime.UtcNow,

@@ -68,7 +68,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole, string>
         {
             entity.Property(order => order.TotalAmount).HasPrecision(18, 2);
             entity.Property(order => order.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
-            entity.Property(order => order.PaymentMethod).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(order => order.PaymentMethod).HasMaxLength(30).IsRequired();
             entity.Property(order => order.ShippingAddress).HasMaxLength(500).IsRequired();
             entity.Property(order => order.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
 
