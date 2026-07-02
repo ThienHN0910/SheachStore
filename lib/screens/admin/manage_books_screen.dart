@@ -85,6 +85,12 @@ class _ManageBooksScreenState extends State<ManageBooksScreen> {
           }
 
           final books = snapshot.data ?? [];
+          if (books.isEmpty) {
+            return const EmptyState(
+              title: 'No books yet',
+              message: 'Add a book to start selling.',
+            );
+          }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: books.length,

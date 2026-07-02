@@ -34,11 +34,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       case OrderStatus.pending:
         return Colors.amber.shade800;
       case OrderStatus.paid:
-      case OrderStatus.completed:
         return Colors.green.shade700;
-      case OrderStatus.processing:
-      case OrderStatus.shipped:
-        return theme.colorScheme.primary;
       case OrderStatus.cancelled:
         return theme.colorScheme.error;
     }

@@ -45,6 +45,7 @@ public static class MappingExtensions
         return new OrderResponse(
             order.Id,
             order.UserId,
+            order.User?.FullName,
             order.TotalAmount,
             order.Status,
             order.ShippingAddress,

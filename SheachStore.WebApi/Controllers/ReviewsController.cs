@@ -19,6 +19,20 @@ public class ReviewsController : ControllerBase
         _dbContext = dbContext;
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpGet]
+    public async Task<ActionResult<List<ReviewResponse>>> GetAll(CancellationToken cancellationToken)
+    {
+        var reviews = await _dbContext.Reviews
+            .AsNoTracking()
+            .Include(review => review.User)
+            .Include(review => review.Book)
+            .OrderByDescending(review => review.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return Ok(reviews.Select(review => review.ToResponse()));
+    }
+
     [HttpGet("book/{bookId:int}")]
     public async Task<ActionResult<List<ReviewResponse>>> GetByBook(int bookId, CancellationToken cancellationToken)
     {

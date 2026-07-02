@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/api/api_exception.dart';
 import '../../models/api_enums.dart';
 import '../../models/order_models.dart';
 import '../../services/order_service.dart';
@@ -27,6 +28,63 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
     setState(() {
       _ordersFuture = future;
     });
+  }
+
+  Future<void> _updateStatus(OrderResponse order, OrderStatus newStatus) async {
+    try {
+      await _orderService.updateStatus(order.id, newStatus);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Order status updated successfully')),
+        );
+      }
+      _refresh();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteOrder(OrderResponse order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Order'),
+        content: Text('Are you sure you want to delete order #${order.id}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _orderService.deleteOrder(order.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Order deleted successfully')),
+          );
+        }
+        _refresh();
+      } on ApiException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.message)),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -61,29 +119,98 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
             itemBuilder: (context, index) {
               final order = orders[index];
               return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                child: Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: const EdgeInsets.all(12),
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Order #${order.id}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const Spacer(),
+                            Text(formatDate(order.createdAt)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Customer: ${order.userFullName ?? "Unknown"}'),
+                        Text('Total: ${formatMoney(order.totalAmount)}'),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            _StatusChip(status: order.status),
+                            const Spacer(),
+                            DropdownButton<OrderStatus>(
+                              value: order.status,
+                              icon: const Icon(Icons.arrow_drop_down),
+                              underline: const SizedBox(),
+                              items: OrderStatus.values.map((status) {
+                                return DropdownMenuItem(
+                                  value: status,
+                                  child: Text(orderStatusLabel(status)),
+                                );
+                              }).toList(),
+                              onChanged: (newStatus) {
+                                if (newStatus != null && newStatus != order.status) {
+                                  _updateStatus(order, newStatus);
+                                }
+                              },
+                            ),
+                            if (order.status == OrderStatus.pending || order.status == OrderStatus.cancelled) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () => _deleteOrder(order),
+                              ),
+                            ]
+                          ],
+                        ),
+                      ],
+                    ),
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Order #${order.id}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const Spacer(),
-                          Text(formatDate(order.createdAt)),
-                        ],
+                      const Divider(height: 1),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Order Items',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ...order.items.map((item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('${item.quantity}x'),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(item.bookTitle ?? 'Unknown Book'),
+                                      ),
+                                      Text(formatMoney(item.lineTotal)),
+                                    ],
+                                  ),
+                                )),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Shipping Address',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(order.shippingAddress),
+                          ],
+                        ),
                       ),
-                      const Divider(),
-                      Text('Customer: ${order.userFullName ?? "Unknown"}'),
-                      Text('Total: ${formatMoney(order.totalAmount)}'),
-                      const SizedBox(height: 12),
-                      _StatusChip(status: order.status),
                     ],
                   ),
                 ),
@@ -107,9 +234,6 @@ class _StatusChip extends StatelessWidget {
       OrderStatus.pending => Colors.orange,
       OrderStatus.paid => Colors.green,
       OrderStatus.cancelled => Colors.red,
-      OrderStatus.processing => Colors.indigo,
-      OrderStatus.shipped => Colors.purple,
-      OrderStatus.completed => Colors.teal,
     };
 
     return Container(
@@ -121,8 +245,7 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         orderStatusLabel(status),
-        style:
-            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }

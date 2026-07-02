@@ -34,30 +34,35 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
     
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(author == null ? 'Add Author' : 'Edit Author'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Name'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: bioController,
-              decoration: const InputDecoration(labelText: 'Bio (Optional)'),
-              maxLines: 2,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(author == null ? 'Add Author' : 'Edit Author'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: bioController,
+                decoration: const InputDecoration(labelText: 'Bio (Optional)'),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: nameController.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(context, true),
+              child: const Text('Save'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
 
@@ -69,8 +74,18 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
       try {
         if (author == null) {
           await _authorService.createAuthor(request);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Author created successfully')),
+            );
+          }
         } else {
           await _authorService.updateAuthor(author.id, request);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Author updated successfully')),
+            );
+          }
         }
         _refresh();
       } on ApiException catch (e) {
@@ -101,6 +116,11 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
     if (confirmed == true) {
       try {
         await _authorService.deleteAuthor(author.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Author deleted successfully')),
+          );
+        }
         _refresh();
       } on ApiException catch (e) {
         if (mounted) {
@@ -121,6 +141,12 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
           if (snapshot.hasError) return ErrorState(message: snapshot.error.toString(), onRetry: _refresh);
 
           final authors = snapshot.data ?? [];
+          if (authors.isEmpty) {
+            return const EmptyState(
+              title: 'No authors yet',
+              message: 'Add an author to start listing books.',
+            );
+          }
           return ListView.builder(
             itemCount: authors.length,
             itemBuilder: (context, index) {

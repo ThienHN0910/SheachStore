@@ -34,34 +34,41 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
     
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(category == null ? 'Add Category' : 'Edit Category'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Name'),
-              onChanged: (v) {
-                if (category == null) {
-                  slugController.text = v.toLowerCase().replaceAll(' ', '-');
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: slugController,
-              decoration: const InputDecoration(labelText: 'Slug'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(category == null ? 'Add Category' : 'Edit Category'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                onChanged: (v) {
+                  setState(() {
+                    if (category == null) {
+                      slugController.text = v.toLowerCase().replaceAll(' ', '-');
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: slugController,
+                decoration: const InputDecoration(labelText: 'Slug'),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: nameController.text.trim().isEmpty || slugController.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(context, true),
+              child: const Text('Save'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
 
@@ -73,8 +80,18 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
       try {
         if (category == null) {
           await _categoryService.createCategory(request);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Category created successfully')),
+            );
+          }
         } else {
           await _categoryService.updateCategory(category.id, request);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Category updated successfully')),
+            );
+          }
         }
         _refresh();
       } on ApiException catch (e) {
@@ -105,6 +122,11 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
     if (confirmed == true) {
       try {
         await _categoryService.deleteCategory(category.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Category deleted successfully')),
+          );
+        }
         _refresh();
       } on ApiException catch (e) {
         if (mounted) {
@@ -125,6 +147,12 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
           if (snapshot.hasError) return ErrorState(message: snapshot.error.toString(), onRetry: _refresh);
 
           final categories = snapshot.data ?? [];
+          if (categories.isEmpty) {
+            return const EmptyState(
+              title: 'No categories yet',
+              message: 'Add a category to start classifying books.',
+            );
+          }
           return ListView.builder(
             itemCount: categories.length,
             itemBuilder: (context, index) {

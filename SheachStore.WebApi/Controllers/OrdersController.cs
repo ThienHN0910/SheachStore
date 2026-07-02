@@ -120,15 +120,78 @@ public class OrdersController : ControllerBase
     [HttpPatch("{id:int}/status")]
     public async Task<IActionResult> UpdateStatus(int id, UpdateOrderStatusRequest request, CancellationToken cancellationToken)
     {
-        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+        var order = await _orderRepository.GetByIdWithDetailsAsync(id, cancellationToken);
         if (order is null)
         {
             return NotFound();
         }
 
+        if (order.Status == OrderStatus.Cancelled)
+        {
+            return BadRequest("Cannot change the status of a cancelled order.");
+        }
+
+        if (order.Status == request.Status)
+        {
+            return NoContent(); // No change
+        }
+
+        // Business rules:
+        // Pending -> Paid or Cancelled (Allowed)
+        // Paid -> Cancelled (Allowed)
+        // Paid -> Pending (Forbidden)
+        if (order.Status == OrderStatus.Paid && request.Status == OrderStatus.Pending)
+        {
+            return BadRequest("Cannot change status of a paid order back to pending.");
+        }
+
+        if (request.Status == OrderStatus.Cancelled)
+        {
+            foreach (var item in order.OrderItems)
+            {
+                if (item.Book is not null)
+                {
+                    item.Book.Stock += item.Quantity;
+                }
+            }
+        }
+
         order.Status = request.Status;
         _orderRepository.Update(order);
         await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetByIdWithDetailsAsync(id, cancellationToken);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Cancelled)
+        {
+            return BadRequest("Cannot delete an order that is not Pending or Cancelled.");
+        }
+
+        if (order.Status == OrderStatus.Pending)
+        {
+            foreach (var item in order.OrderItems)
+            {
+                if (item.Book is not null)
+                {
+                    item.Book.Stock += item.Quantity;
+                }
+            }
+        }
+
+        _dbContext.OrderItems.RemoveRange(order.OrderItems);
+        _dbContext.Orders.Remove(order);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return NoContent();
     }

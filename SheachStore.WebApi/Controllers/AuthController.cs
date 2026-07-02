@@ -55,6 +55,12 @@ public class AuthController : ControllerBase
             return NotFound();
         }
 
+        var currentUserId = _userManager.GetUserId(User);
+        if (userId == currentUserId)
+        {
+            return BadRequest("Cannot change your own role.");
+        }
+
         user.Role = request.Role;
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)

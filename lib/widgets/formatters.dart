@@ -15,9 +15,6 @@ String orderStatusLabel(OrderStatus status) {
   return switch (status) {
     OrderStatus.pending => 'Pending',
     OrderStatus.paid => 'Paid',
-    OrderStatus.processing => 'Processing',
-    OrderStatus.shipped => 'Shipped',
-    OrderStatus.completed => 'Completed',
     OrderStatus.cancelled => 'Cancelled',
   };
 }

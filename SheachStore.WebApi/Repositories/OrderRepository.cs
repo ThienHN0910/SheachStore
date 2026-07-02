@@ -39,6 +39,7 @@ public class OrderRepository : Repository<Order>, IOrderRepository
     private IQueryable<Order> QueryWithDetails()
     {
         return _dbContext.Orders
+            .Include(order => order.User)
             .Include(order => order.OrderItems)
             .ThenInclude(item => item.Book);
     }

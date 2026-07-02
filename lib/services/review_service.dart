@@ -6,6 +6,16 @@ class ReviewService {
 
   final ApiClient _apiClient;
 
+  Future<List<ReviewResponse>> getAllReviews() {
+    return _apiClient.get(
+      '/api/reviews',
+      (json) => (json as List<dynamic>)
+          .map((item) => ReviewResponse.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      authorized: true,
+    );
+  }
+
   Future<List<ReviewResponse>> getReviewsByBook(int bookId) {
     return _apiClient.get(
       '/api/reviews/book/$bookId',

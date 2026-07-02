@@ -13,9 +13,6 @@ enum UserRole {
 enum OrderStatus {
   pending('Pending'),
   paid('Paid'),
-  processing('Processing'),
-  shipped('Shipped'),
-  completed('Completed'),
   cancelled('Cancelled');
 
   const OrderStatus(this.value);

@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SheachStore.WebApi.Data;
 using SheachStore.WebApi.Dtos;
 using SheachStore.WebApi.Models;
 using SheachStore.WebApi.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace SheachStore.WebApi.Controllers;
 
@@ -11,10 +13,12 @@ namespace SheachStore.WebApi.Controllers;
 public class CategoriesController : ControllerBase
 {
     private readonly IRepository<Category> _repository;
+    private readonly AppDbContext _dbContext;
 
-    public CategoriesController(IRepository<Category> repository)
+    public CategoriesController(IRepository<Category> repository, AppDbContext dbContext)
     {
         _repository = repository;
+        _dbContext = dbContext;
     }
 
     [HttpGet]
@@ -35,6 +39,12 @@ public class CategoriesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CategoryResponse>> Create(CategoryRequest request, CancellationToken cancellationToken)
     {
+        var exists = await _dbContext.Categories.AnyAsync(c => c.Slug == request.Slug, cancellationToken);
+        if (exists)
+        {
+            return Conflict("A category with this slug already exists.");
+        }
+
         var category = new Category { Name = request.Name, Slug = request.Slug };
         await _repository.AddAsync(category, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -50,6 +60,12 @@ public class CategoriesController : ControllerBase
         if (category is null)
         {
             return NotFound();
+        }
+
+        var exists = await _dbContext.Categories.AnyAsync(c => c.Slug == request.Slug && c.Id != id, cancellationToken);
+        if (exists)
+        {
+            return Conflict("A category with this slug already exists.");
         }
 
         category.Name = request.Name;
@@ -68,6 +84,12 @@ public class CategoriesController : ControllerBase
         if (category is null)
         {
             return NotFound();
+        }
+
+        var hasBooks = await _dbContext.Books.AnyAsync(b => b.CategoryId == id, cancellationToken);
+        if (hasBooks)
+        {
+            return BadRequest("Cannot delete this category because it has associated books.");
         }
 
         _repository.Remove(category);

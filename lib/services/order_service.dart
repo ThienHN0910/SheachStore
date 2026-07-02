@@ -52,4 +52,8 @@ class OrderService {
       authorized: true,
     );
   }
+
+  Future<void> deleteOrder(int id) {
+    return _apiClient.delete('/api/orders/$id', authorized: true);
+  }
 }

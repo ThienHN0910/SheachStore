@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SheachStore.WebApi.Data;
 using SheachStore.WebApi.Dtos;
 using SheachStore.WebApi.Models;
 using SheachStore.WebApi.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace SheachStore.WebApi.Controllers;
 
@@ -11,10 +13,12 @@ namespace SheachStore.WebApi.Controllers;
 public class AuthorsController : ControllerBase
 {
     private readonly IRepository<Author> _repository;
+    private readonly AppDbContext _dbContext;
 
-    public AuthorsController(IRepository<Author> repository)
+    public AuthorsController(IRepository<Author> repository, AppDbContext dbContext)
     {
         _repository = repository;
+        _dbContext = dbContext;
     }
 
     [HttpGet]
@@ -68,6 +72,12 @@ public class AuthorsController : ControllerBase
         if (author is null)
         {
             return NotFound();
+        }
+
+        var hasBooks = await _dbContext.Books.AnyAsync(b => b.AuthorId == id, cancellationToken);
+        if (hasBooks)
+        {
+            return BadRequest("Cannot delete this author because they have associated books.");
         }
 
         _repository.Remove(author);

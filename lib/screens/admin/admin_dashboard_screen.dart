@@ -4,6 +4,7 @@ import 'manage_categories_screen.dart';
 import 'manage_authors_screen.dart';
 import 'manage_orders_screen.dart';
 import 'manage_users_screen.dart';
+import 'manage_reviews_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -58,6 +59,14 @@ class AdminDashboardScreen extends StatelessWidget {
             color: Colors.red,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
+            ),
+          ),
+          _AdminCard(
+            title: 'Manage Reviews',
+            icon: Icons.rate_review_outlined,
+            color: Colors.teal,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ManageReviewsScreen()),
             ),
           ),
         ],

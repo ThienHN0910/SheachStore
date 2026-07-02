@@ -46,6 +46,7 @@ public record OrderItemResponse(int Id, int BookId, string? BookTitle, int Quant
 public record OrderResponse(
     int Id,
     string UserId,
+    string? UserFullName,
     decimal TotalAmount,
     OrderStatus Status,
     string ShippingAddress,
