@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/api/api_exception.dart';
 import '../../models/api_enums.dart';
 import '../../models/order_models.dart';
 import '../../services/order_service.dart';
@@ -28,24 +27,6 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
     setState(() {
       _ordersFuture = future;
     });
-  }
-
-  Future<void> _updateStatus(OrderResponse order, OrderStatus newStatus) async {
-    try {
-      await _orderService.updateStatus(order.id, newStatus);
-      _refresh();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order status updated')),
-        );
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
-      }
-    }
   }
 
   @override
@@ -103,26 +84,7 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
                       Text('Total: ${formatMoney(order.totalAmount)}'),
                       Text('Address: ${order.shippingAddress}'),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _StatusChip(status: order.status),
-                          const Spacer(),
-                          PopupMenuButton<OrderStatus>(
-                            onSelected: (status) => _updateStatus(order, status),
-                            itemBuilder: (context) => OrderStatus.values
-                                .map((s) => PopupMenuItem<OrderStatus>(
-                                      value: s,
-                                      child: Text(orderStatusLabel(s)),
-                                    ))
-                                .toList(),
-                            child: OutlinedButton.icon(
-                              onPressed: null,
-                              icon: const Icon(Icons.edit_outlined, size: 18),
-                              label: const Text('Update Status'),
-                            ),
-                          ),
-                        ],
-                      ),
+                      _StatusChip(status: order.status),
                     ],
                   ),
                 ),
@@ -144,11 +106,11 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (status) {
       OrderStatus.pending => Colors.orange,
-      OrderStatus.paid => Colors.blue,
+      OrderStatus.paid => Colors.green,
+      OrderStatus.cancelled => Colors.red,
       OrderStatus.processing => Colors.indigo,
       OrderStatus.shipped => Colors.purple,
-      OrderStatus.completed => Colors.green,
-      OrderStatus.cancelled => Colors.red,
+      OrderStatus.completed => Colors.teal,
     };
 
     return Container(

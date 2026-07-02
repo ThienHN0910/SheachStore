@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SheachStore.WebApi.Models;
@@ -52,13 +53,16 @@ public static class FirebaseAuthenticationExtensions
                                     ?? $"{userId}@firebase.local";
                         var fullName = principal?.FindFirst("name")?.Value ?? email.Split('@')[0];
 
+                        var isFirstUser = !await userManager.Users.AnyAsync();
+                        var isAdminEmail = email.StartsWith("admin", StringComparison.OrdinalIgnoreCase);
+
                         user = new User
                         {
                             Id = userId,
                             UserName = email,
                             Email = email,
                             FullName = fullName,
-                            Role = UserRole.Customer,
+                            Role = (isFirstUser || isAdminEmail) ? UserRole.Admin : UserRole.Customer,
                             CreatedAt = DateTime.UtcNow,
                             EmailConfirmed = true
                         };
@@ -68,7 +72,15 @@ public static class FirebaseAuthenticationExtensions
                     // Thêm role claim từ database vào JWT Principal hiện tại
                     var roleString = user.Role.ToString();
                     var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
-                    identity?.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, roleString));
+                    if (identity != null)
+                    {
+                        var existingRoleClaims = identity.FindAll(System.Security.Claims.ClaimTypes.Role).ToList();
+                        foreach (var claim in existingRoleClaims)
+                        {
+                            identity.RemoveClaim(claim);
+                        }
+                        identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, roleString));
+                    }
                 }
             };
         });

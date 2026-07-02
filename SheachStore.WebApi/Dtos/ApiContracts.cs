@@ -4,6 +4,7 @@ using SheachStore.WebApi.Models;
 namespace SheachStore.WebApi.Dtos;
 
 public record UserResponse(string Id, string Email, string FullName, UserRole Role, int LoyaltyPoints, DateTime CreatedAt);
+public record UpdateRoleRequest([Required] UserRole Role);
 
 public record CategoryRequest([Required, MaxLength(120)] string Name, [Required, MaxLength(150)] string Slug);
 public record CategoryResponse(int Id, string Name, string Slug);

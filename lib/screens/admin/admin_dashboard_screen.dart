@@ -3,6 +3,7 @@ import 'manage_books_screen.dart';
 import 'manage_categories_screen.dart';
 import 'manage_authors_screen.dart';
 import 'manage_orders_screen.dart';
+import 'manage_users_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -49,6 +50,14 @@ class AdminDashboardScreen extends StatelessWidget {
             color: Colors.purple,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ManageAuthorsScreen()),
+            ),
+          ),
+          _AdminCard(
+            title: 'Manage Users',
+            icon: Icons.people_outline,
+            color: Colors.red,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
             ),
           ),
         ],

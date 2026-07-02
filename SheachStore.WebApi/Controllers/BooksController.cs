@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SheachStore.WebApi.Data;
 using SheachStore.WebApi.Dtos;
 using SheachStore.WebApi.Models;
 using SheachStore.WebApi.Repositories;
@@ -13,15 +15,18 @@ public class BooksController : ControllerBase
     private readonly IBookRepository _bookRepository;
     private readonly IRepository<Author> _authorRepository;
     private readonly IRepository<Category> _categoryRepository;
+    private readonly AppDbContext _dbContext;
 
     public BooksController(
         IBookRepository bookRepository,
         IRepository<Author> authorRepository,
-        IRepository<Category> categoryRepository)
+        IRepository<Category> categoryRepository,
+        AppDbContext dbContext)
     {
         _bookRepository = bookRepository;
         _authorRepository = authorRepository;
         _categoryRepository = categoryRepository;
+        _dbContext = dbContext;
     }
 
     [HttpGet]
@@ -104,8 +109,23 @@ public class BooksController : ControllerBase
             return NotFound();
         }
 
+        var hasOrders = await _dbContext.OrderItems.AnyAsync(oi => oi.BookId == id, cancellationToken);
+        if (hasOrders)
+        {
+            return BadRequest("Cannot delete this book because it has order history. Please set its stock to 0 to make it unavailable instead.");
+        }
+
+        var reviews = await _dbContext.Reviews.Where(r => r.BookId == id).ToListAsync(cancellationToken);
+        _dbContext.Reviews.RemoveRange(reviews);
+
+        var wishlists = await _dbContext.WishlistItems.Where(wi => wi.BookId == id).ToListAsync(cancellationToken);
+        _dbContext.WishlistItems.RemoveRange(wishlists);
+
+        var cartItems = await _dbContext.CartItems.Where(ci => ci.BookId == id).ToListAsync(cancellationToken);
+        _dbContext.CartItems.RemoveRange(cartItems);
+
         _bookRepository.Remove(book);
-        await _bookRepository.SaveChangesAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return NoContent();
     }

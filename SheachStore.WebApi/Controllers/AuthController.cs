@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SheachStore.WebApi.Dtos;
 using SheachStore.WebApi.Models;
 
@@ -32,5 +33,35 @@ public class AuthController : ControllerBase
         if (user == null) return NotFound();
 
         return Ok(user.ToResponse());
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("users")]
+    public async Task<ActionResult<List<UserResponse>>> GetAllUsers()
+    {
+        var users = await _userManager.Users
+            .OrderBy(u => u.FullName)
+            .ToListAsync();
+        return Ok(users.Select(u => u.ToResponse()).ToList());
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("users/{userId}/role")]
+    public async Task<IActionResult> UpdateUserRole(string userId, UpdateRoleRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        user.Role = request.Role;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return BadRequest(result.Errors);
+        }
+
+        return NoContent();
     }
 }
