@@ -82,7 +82,6 @@ class _ManageOrdersScreenState extends State<ManageOrdersScreen> {
                       const Divider(),
                       Text('Customer: ${order.userFullName ?? "Unknown"}'),
                       Text('Total: ${formatMoney(order.totalAmount)}'),
-                      Text('Address: ${order.shippingAddress}'),
                       const SizedBox(height: 12),
                       _StatusChip(status: order.status),
                     ],
