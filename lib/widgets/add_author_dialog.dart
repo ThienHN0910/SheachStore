@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/api/api_exception.dart';
 import '../services/author_service.dart';
 import '../models/catalog_models.dart';
 
@@ -12,27 +13,48 @@ class AddAuthorDialog extends StatefulWidget {
 }
 
 class _AddAuthorDialogState extends State<AddAuthorDialog> {
-  final _controller = TextEditingController();
+  final _nameController = TextEditingController();
+  final _bioController = TextEditingController();
   var _isSubmitting = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _nameController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    final name = _controller.text.trim();
+    final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
     try {
-      final author = await widget.authorService.createAuthor(AuthorRequest(name: name));
+      final author = await widget.authorService.createAuthor(
+        AuthorRequest(
+          name: name,
+          bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+        ),
+      );
       if (mounted) Navigator.pop(context, author);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = e.message;
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-        Navigator.pop(context);
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = e.toString();
+        });
       }
     }
   }
@@ -41,20 +63,41 @@ class _AddAuthorDialogState extends State<AddAuthorDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Add New Author'),
-      content: TextField(
-        controller: _controller,
-        decoration: const InputDecoration(labelText: 'Author Name'),
-        autofocus: true,
-        enabled: !_isSubmitting,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: 'Author Name',
+              errorText: _errorMessage,
+              errorMaxLines: 3,
+            ),
+            autofocus: true,
+            enabled: !_isSubmitting,
+            onChanged: (_) {
+              if (_errorMessage != null) {
+                setState(() => _errorMessage = null);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _bioController,
+            decoration: const InputDecoration(labelText: 'Bio (Optional)'),
+            maxLines: 2,
+            enabled: !_isSubmitting,
+          ),
+        ],
       ),
       actions: [
         TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.pop(context), 
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: _isSubmitting ? null : _submit, 
-          child: _isSubmitting 
+          onPressed: _isSubmitting ? null : _submit,
+          child: _isSubmitting
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('Add'),
         ),

@@ -39,6 +39,13 @@ public class AuthorsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<AuthorResponse>> Create(AuthorRequest request, CancellationToken cancellationToken)
     {
+        var exists = await _dbContext.Authors.AnyAsync(
+            a => a.Name.ToLower() == request.Name.ToLower(), cancellationToken);
+        if (exists)
+        {
+            return Conflict($"An author with the name '{request.Name}' already exists.");
+        }
+
         var author = new Author { Name = request.Name, Bio = request.Bio };
         await _repository.AddAsync(author, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -54,6 +61,13 @@ public class AuthorsController : ControllerBase
         if (author is null)
         {
             return NotFound();
+        }
+
+        var exists = await _dbContext.Authors.AnyAsync(
+            a => a.Name.ToLower() == request.Name.ToLower() && a.Id != id, cancellationToken);
+        if (exists)
+        {
+            return Conflict($"An author with the name '{request.Name}' already exists.");
         }
 
         author.Name = request.Name;

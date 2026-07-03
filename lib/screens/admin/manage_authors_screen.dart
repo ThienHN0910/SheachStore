@@ -31,7 +31,8 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
   Future<void> _showAuthorDialog([AuthorResponse? author]) async {
     final nameController = TextEditingController(text: author?.name);
     final bioController = TextEditingController(text: author?.bio);
-    
+    String? errorMessage;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -42,8 +43,18 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  errorText: errorMessage,
+                  errorMaxLines: 3,
+                ),
+                onChanged: (_) {
+                  if (errorMessage != null) {
+                    setState(() => errorMessage = null);
+                  } else {
+                    setState(() {});
+                  }
+                },
               ),
               const SizedBox(height: 8),
               TextField(
@@ -58,7 +69,22 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
             TextButton(
               onPressed: nameController.text.trim().isEmpty
                   ? null
-                  : () => Navigator.pop(context, true),
+                  : () async {
+                      final request = AuthorRequest(
+                        name: nameController.text.trim(),
+                        bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
+                      );
+                      try {
+                        if (author == null) {
+                          await _authorService.createAuthor(request);
+                        } else {
+                          await _authorService.updateAuthor(author.id, request);
+                        }
+                        if (context.mounted) Navigator.pop(context, true);
+                      } on ApiException catch (e) {
+                        setState(() => errorMessage = e.message);
+                      }
+                    },
               child: const Text('Save'),
             ),
           ],
@@ -67,32 +93,14 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
     );
 
     if (result == true) {
-      final request = AuthorRequest(
-        name: nameController.text.trim(),
-        bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
-      );
-      try {
-        if (author == null) {
-          await _authorService.createAuthor(request);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Author created successfully')),
-            );
-          }
-        } else {
-          await _authorService.updateAuthor(author.id, request);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Author updated successfully')),
-            );
-          }
-        }
-        _refresh();
-      } on ApiException catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(author == null ? 'Author created successfully' : 'Author updated successfully'),
+          ),
+        );
       }
+      _refresh();
     }
   }
 

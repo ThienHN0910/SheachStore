@@ -31,7 +31,8 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
   Future<void> _showCategoryDialog([CategoryResponse? category]) async {
     final nameController = TextEditingController(text: category?.name);
     final slugController = TextEditingController(text: category?.slug);
-    
+    String? errorMessage;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -42,8 +43,15 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  errorText: errorMessage,
+                  errorMaxLines: 3,
+                ),
                 onChanged: (v) {
+                  if (errorMessage != null) {
+                    setState(() => errorMessage = null);
+                  }
                   setState(() {
                     if (category == null) {
                       slugController.text = v.toLowerCase().replaceAll(' ', '-');
@@ -55,7 +63,11 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
               TextField(
                 controller: slugController,
                 decoration: const InputDecoration(labelText: 'Slug'),
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) {
+                  if (errorMessage != null) {
+                    setState(() => errorMessage = null);
+                  }
+                },
               ),
             ],
           ),
@@ -64,7 +76,24 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
             TextButton(
               onPressed: nameController.text.trim().isEmpty || slugController.text.trim().isEmpty
                   ? null
-                  : () => Navigator.pop(context, true),
+                  : () async {
+                      final request = CategoryRequest(
+                        name: nameController.text.trim(),
+                        slug: slugController.text.trim(),
+                      );
+                      try {
+                        if (category == null) {
+                          await _categoryService.createCategory(request);
+                        } else {
+                          await _categoryService.updateCategory(category.id, request);
+                        }
+                        if (context.mounted) Navigator.pop(context, true);
+                      } on ApiException catch (e) {
+                        setState(() => errorMessage = e.message);
+                      } catch (e) {
+                        setState(() => errorMessage = e.toString());
+                      }
+                    },
               child: const Text('Save'),
             ),
           ],
@@ -73,32 +102,16 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
     );
 
     if (result == true) {
-      final request = CategoryRequest(
-        name: nameController.text.trim(),
-        slug: slugController.text.trim(),
-      );
-      try {
-        if (category == null) {
-          await _categoryService.createCategory(request);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Category created successfully')),
-            );
-          }
-        } else {
-          await _categoryService.updateCategory(category.id, request);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Category updated successfully')),
-            );
-          }
-        }
-        _refresh();
-      } on ApiException catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(category == null
+                ? 'Category created successfully'
+                : 'Category updated successfully'),
+          ),
+        );
       }
+      _refresh();
     }
   }
 

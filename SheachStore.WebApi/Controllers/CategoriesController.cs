@@ -39,10 +39,17 @@ public class CategoriesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CategoryResponse>> Create(CategoryRequest request, CancellationToken cancellationToken)
     {
-        var exists = await _dbContext.Categories.AnyAsync(c => c.Slug == request.Slug, cancellationToken);
-        if (exists)
+        var slugExists = await _dbContext.Categories.AnyAsync(c => c.Slug == request.Slug, cancellationToken);
+        if (slugExists)
         {
             return Conflict("A category with this slug already exists.");
+        }
+
+        var nameExists = await _dbContext.Categories.AnyAsync(
+            c => c.Name.ToLower() == request.Name.ToLower(), cancellationToken);
+        if (nameExists)
+        {
+            return Conflict($"A category with the name '{request.Name}' already exists.");
         }
 
         var category = new Category { Name = request.Name, Slug = request.Slug };
@@ -62,10 +69,17 @@ public class CategoriesController : ControllerBase
             return NotFound();
         }
 
-        var exists = await _dbContext.Categories.AnyAsync(c => c.Slug == request.Slug && c.Id != id, cancellationToken);
-        if (exists)
+        var slugExists = await _dbContext.Categories.AnyAsync(c => c.Slug == request.Slug && c.Id != id, cancellationToken);
+        if (slugExists)
         {
             return Conflict("A category with this slug already exists.");
+        }
+
+        var nameExists = await _dbContext.Categories.AnyAsync(
+            c => c.Name.ToLower() == request.Name.ToLower() && c.Id != id, cancellationToken);
+        if (nameExists)
+        {
+            return Conflict($"A category with the name '{request.Name}' already exists.");
         }
 
         category.Name = request.Name;

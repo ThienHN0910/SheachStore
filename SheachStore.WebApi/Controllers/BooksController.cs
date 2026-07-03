@@ -47,9 +47,23 @@ public class BooksController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<BookResponse>> Create(BookRequest request, CancellationToken cancellationToken)
     {
-        if (!await RelatedEntitiesExistAsync(request.AuthorId, request.CategoryId, cancellationToken))
+        var authorExists = await _authorRepository.GetByIdAsync(request.AuthorId, cancellationToken) is not null;
+        if (!authorExists)
         {
-            return BadRequest("AuthorId or CategoryId does not exist.");
+            return BadRequest($"Author with Id {request.AuthorId} does not exist.");
+        }
+
+        var categoryExists = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken) is not null;
+        if (!categoryExists)
+        {
+            return BadRequest($"Category with Id {request.CategoryId} does not exist.");
+        }
+
+        var titleExists = await _dbContext.Books.AnyAsync(
+            b => b.Title.ToLower() == request.Title.ToLower(), cancellationToken);
+        if (titleExists)
+        {
+            return Conflict($"A book with the title '{request.Title}' already exists.");
         }
 
         var book = new Book
@@ -80,9 +94,23 @@ public class BooksController : ControllerBase
             return NotFound();
         }
 
-        if (!await RelatedEntitiesExistAsync(request.AuthorId, request.CategoryId, cancellationToken))
+        var authorExists = await _authorRepository.GetByIdAsync(request.AuthorId, cancellationToken) is not null;
+        if (!authorExists)
         {
-            return BadRequest("AuthorId or CategoryId does not exist.");
+            return BadRequest($"Author with Id {request.AuthorId} does not exist.");
+        }
+
+        var categoryExists = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken) is not null;
+        if (!categoryExists)
+        {
+            return BadRequest($"Category with Id {request.CategoryId} does not exist.");
+        }
+
+        var titleExists = await _dbContext.Books.AnyAsync(
+            b => b.Title.ToLower() == request.Title.ToLower() && b.Id != id, cancellationToken);
+        if (titleExists)
+        {
+            return Conflict($"A book with the title '{request.Title}' already exists.");
         }
 
         book.Title = request.Title;
@@ -130,9 +158,4 @@ public class BooksController : ControllerBase
         return NoContent();
     }
 
-    private async Task<bool> RelatedEntitiesExistAsync(int authorId, int categoryId, CancellationToken cancellationToken)
-    {
-        return await _authorRepository.GetByIdAsync(authorId, cancellationToken) is not null
-            && await _categoryRepository.GetByIdAsync(categoryId, cancellationToken) is not null;
-    }
 }
