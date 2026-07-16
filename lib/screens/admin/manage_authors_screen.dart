@@ -33,6 +33,11 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
     final bioController = TextEditingController(text: author?.bio);
     String? errorMessage;
 
+    List<AuthorResponse> existingAuthors = [];
+    try {
+      existingAuthors = await _authorsFuture;
+    } catch (_) {}
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -70,8 +75,19 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
               onPressed: nameController.text.trim().isEmpty
                   ? null
                   : () async {
+                      final name = nameController.text.trim();
+                      final isDuplicate = existingAuthors.any((a) =>
+                          a.name.toLowerCase() == name.toLowerCase() &&
+                          (author == null || a.id != author.id));
+                      if (isDuplicate) {
+                        setState(() {
+                          errorMessage = 'An author with the name "$name" already exists.';
+                        });
+                        return;
+                      }
+
                       final request = AuthorRequest(
-                        name: nameController.text.trim(),
+                        name: name,
                         bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
                       );
                       try {

@@ -35,6 +35,16 @@ class _AddAuthorDialogState extends State<AddAuthorDialog> {
     });
 
     try {
+      final existing = await widget.authorService.getAuthors();
+      final isDuplicate = existing.any((a) => a.name.toLowerCase() == name.toLowerCase());
+      if (isDuplicate) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = 'An author with the name "$name" already exists.';
+        });
+        return;
+      }
+
       final author = await widget.authorService.createAuthor(
         AuthorRequest(
           name: name,

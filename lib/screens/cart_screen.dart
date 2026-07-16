@@ -379,21 +379,30 @@ class _CartScreenState extends State<CartScreen> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: _isCheckingOut ? null : _clearCart,
-                              icon: const Icon(Icons.remove_shopping_cart_outlined, size: 18),
-                              label: const Text('Clear Cart'),
+                              icon: const Icon(Icons.remove_shopping_cart_outlined, size: 16),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('Clear Cart', maxLines: 1),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: theme.colorScheme.error),
                                 foregroundColor: theme.colorScheme.error,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                               ),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            flex: 2,
                             child: FilledButton.icon(
                               onPressed: _isCheckingOut ? null : () => _checkout(cart),
-                              icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-                              label: Text(_isCheckingOut ? 'Checking out...' : 'Checkout'),
+                              icon: const Icon(Icons.shopping_bag_outlined, size: 16),
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(_isCheckingOut ? 'Checking out...' : 'Checkout', maxLines: 1),
+                              ),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                              ),
                             ),
                           ),
                         ],

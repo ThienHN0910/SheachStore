@@ -10,6 +10,7 @@ import '../services/review_service.dart';
 import '../services/wishlist_service.dart';
 import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
+import 'cart_screen.dart';
 
 class BookDetailScreen extends StatefulWidget {
   const BookDetailScreen({super.key, required this.bookId});
@@ -105,9 +106,21 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         CartItemRequest(bookId: book.id, quantity: _quantity),
       );
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Added to cart')));
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            content: const Text('Added to cart'),
+            action: SnackBarAction(
+              label: 'View Cart',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CartScreen()),
+                );
+              },
+            ),
+          ),
+        );
       }
     } on ApiException catch (error) {
       _showError(error.message);

@@ -8,6 +8,7 @@ import '../services/cart_service.dart';
 import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
 import 'book_detail_screen.dart';
+import 'cart_screen.dart';
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({super.key});
@@ -43,13 +44,17 @@ class _WishlistScreenState extends State<WishlistScreen> {
         CartItemRequest(bookId: book.id, quantity: 1),
       );
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            duration: const Duration(seconds: 2),
             content: Text('Added "${book.title}" to cart'),
             action: SnackBarAction(
               label: 'View Cart',
               onPressed: () {
-                // Open cart screen or go back to main to open cart
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CartScreen()),
+                );
               },
             ),
           ),

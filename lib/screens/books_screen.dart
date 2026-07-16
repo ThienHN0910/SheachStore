@@ -27,7 +27,6 @@ class BooksScreen extends StatefulWidget {
 
 class _BooksScreenState extends State<BooksScreen> {
   final _searchController = TextEditingController();
-  final _categoryService = CategoryService();
 
   List<CategoryResponse> _categories = [];
   int? _selectedCategoryId;
@@ -36,7 +35,6 @@ class _BooksScreenState extends State<BooksScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCategories();
   }
 
   @override
@@ -45,32 +43,12 @@ class _BooksScreenState extends State<BooksScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCategories() async {
-    if (!mounted) return;
-    setState(() => _isLoadingCategories = true);
-    try {
-      final categories = await _categoryService.getCategories();
-      if (mounted) {
-        setState(() {
-          _categories = categories;
-        });
-      }
-    } catch (e) {
-      // Fail silently, falls back to showing only catalog
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingCategories = false);
-      }
-    }
-  }
-
   void _refresh() {
     setState(() {
       _selectedCategoryId = null;
     });
     context.read<BookBloc>().add(FetchBooks());
   }
-
   void _logout() {
     context.read<AuthBloc>().add(LogoutRequested());
   }
@@ -176,7 +154,28 @@ class _BooksScreenState extends State<BooksScreen> {
           children: [
             _buildCategoryFilterRow(theme),
             Expanded(
-              child: BlocBuilder<BookBloc, BookState>(
+              child: BlocConsumer<BookBloc, BookState>(
+                listener: (context, state) {
+                  if (state is BookLoaded) {
+                    if (_selectedCategoryId == null && _searchController.text.isEmpty) {
+                      final uniqueCategories = <int, String>{};
+                      for (final book in state.books) {
+                        if (book.categoryId != null && book.categoryName != null) {
+                          uniqueCategories[book.categoryId] = book.categoryName!;
+                        }
+                      }
+                      setState(() {
+                        _categories = uniqueCategories.entries
+                            .map((e) => CategoryResponse(
+                                  id: e.key,
+                                  name: e.value,
+                                  slug: '',
+                                ))
+                            .toList();
+                      });
+                    }
+                  }
+                },
                 builder: (context, state) {
                   if (state is BookLoading) {
                     return const LoadingState();
