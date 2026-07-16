@@ -38,6 +38,8 @@ class _ManageAuthorsScreenState extends State<ManageAuthorsScreen> {
       existingAuthors = await _authorsFuture;
     } catch (_) {}
 
+    if (!mounted) return;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(

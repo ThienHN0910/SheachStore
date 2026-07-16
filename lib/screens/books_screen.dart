@@ -9,7 +9,6 @@ import '../blocs/book/book_event.dart';
 import '../blocs/book/book_state.dart';
 import '../models/api_enums.dart';
 import '../models/catalog_models.dart';
-import '../services/category_service.dart';
 import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
 import 'book_detail_screen.dart';
@@ -30,7 +29,6 @@ class _BooksScreenState extends State<BooksScreen> {
 
   List<CategoryResponse> _categories = [];
   int? _selectedCategoryId;
-  bool _isLoadingCategories = false;
 
   @override
   void initState() {
@@ -160,7 +158,7 @@ class _BooksScreenState extends State<BooksScreen> {
                     if (_selectedCategoryId == null && _searchController.text.isEmpty) {
                       final uniqueCategories = <int, String>{};
                       for (final book in state.books) {
-                        if (book.categoryId != null && book.categoryName != null) {
+                        if (book.categoryName != null) {
                           uniqueCategories[book.categoryId] = book.categoryName!;
                         }
                       }
@@ -235,18 +233,6 @@ class _BooksScreenState extends State<BooksScreen> {
   }
 
   Widget _buildCategoryFilterRow(ThemeData theme) {
-    if (_isLoadingCategories && _categories.isEmpty) {
-      return const SizedBox(
-        height: 52,
-        child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
     if (_categories.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
