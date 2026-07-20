@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:src/blocs/auth/auth_bloc.dart';
-import 'package:src/blocs/book/book_bloc.dart';
+import 'package:provider/provider.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/book/book_bloc.dart';
 import 'package:src/models/api_enums.dart';
 import 'package:src/models/catalog_models.dart';
 import 'package:src/models/user_models.dart';
 import 'package:src/models/cart_models.dart';
 import 'package:src/models/order_models.dart';
 import 'package:src/models/review_models.dart';
+import 'package:src/providers/auth_provider.dart';
+import 'package:src/providers/book_provider.dart';
+import 'package:src/repositories/book_repository.dart';
+import 'package:src/services/auth_service.dart';
 
 UserResponse createMockUserResponse({
   String id = 'user-123',
@@ -149,19 +154,66 @@ ReviewResponse createMockReviewResponse({
   );
 }
 
+/// Creates a test app wrapping [child] with the necessary providers.
+///
+/// - Provide [authBloc] / [bookBloc] when you need BLoC context (e.g. widget
+///   tests that test against BLoC state).
+/// - Provide [authProvider] / [bookProvider] when the screen under test reads
+///   from Provider (e.g. AuthScreen, BooksScreen).
+/// - Provide [authService] + [bookRepository] as a shorthand: the helper will
+///   build AuthProvider and BookProvider automatically from them.
 Widget createTestApp({
   required Widget child,
+  // BLoC providers (for screens that consume BLoC)
   AuthBloc? authBloc,
   BookBloc? bookBloc,
+  // Provider providers (for screens that consume Provider)
+  AuthProvider? authProvider,
+  BookProvider? bookProvider,
+  // Shorthand: build providers from services/repos
+  AuthService? authService,
+  BookRepository? bookRepository,
 }) {
-  return MaterialApp(
-    home: MultiBlocProvider(
-      providers: [
-        if (authBloc != null) BlocProvider<AuthBloc>.value(value: authBloc),
-        if (bookBloc != null) BlocProvider<BookBloc>.value(value: bookBloc),
-      ],
-      child: Scaffold(body: child),
-    ),
-  );
-}
+  final effectiveAuthProvider =
+      authProvider ?? (authService != null ? AuthProvider(authService: authService) : null);
+  final effectiveBookProvider =
+      bookProvider ?? (bookRepository != null ? BookProvider(bookRepository: bookRepository) : null);
 
+  Widget app = MaterialApp(home: child);
+
+  // Wrap with BLoC providers if supplied
+  if (authBloc != null || bookBloc != null) {
+    final blocs = <BlocProvider>[
+      if (authBloc != null) BlocProvider<AuthBloc>.value(value: authBloc),
+      if (bookBloc != null) BlocProvider<BookBloc>.value(value: bookBloc),
+    ];
+    app = MaterialApp(
+      home: MultiBlocProvider(
+        providers: blocs,
+        child: Scaffold(body: child),
+      ),
+    );
+  }
+
+  // Wrap with Provider providers if supplied (supports both BLoC + Provider)
+  if (effectiveAuthProvider != null || effectiveBookProvider != null) {
+    final providers = [
+      if (effectiveAuthProvider != null)
+        ChangeNotifierProvider<AuthProvider>.value(value: effectiveAuthProvider),
+      if (effectiveBookProvider != null)
+        ChangeNotifierProvider<BookProvider>.value(value: effectiveBookProvider),
+    ];
+
+    if (authBloc != null || bookBloc != null) {
+      // Both BLoC and Provider: wrap the BLoC app in Provider
+      app = MultiProvider(providers: providers, child: app);
+    } else {
+      app = MultiProvider(
+        providers: providers,
+        child: MaterialApp(home: child),
+      );
+    }
+  }
+
+  return app;
+}

@@ -1,10 +1,10 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:src/blocs/book/book_bloc.dart';
-import 'package:src/blocs/book/book_event.dart';
-import 'package:src/blocs/book/book_state.dart';
 
+import '../blocs/book/book_bloc.dart';
+import '../blocs/book/book_event.dart';
+import '../blocs/book/book_state.dart';
 import '../helpers/mocks.mocks.dart';
 import '../helpers/test_helpers.dart';
 

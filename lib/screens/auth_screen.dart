@@ -7,7 +7,11 @@ import '../providers/book_provider.dart';
 import '../services/notification_service.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.onAuthenticated});
+
+  /// Optional callback invoked after a successful authentication.
+  /// Used primarily in widget tests to detect when auth completes.
+  final VoidCallback? onAuthenticated;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();

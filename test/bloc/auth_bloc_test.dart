@@ -2,11 +2,11 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:src/blocs/auth/auth_bloc.dart';
-import 'package:src/blocs/auth/auth_event.dart';
-import 'package:src/blocs/auth/auth_state.dart';
 import 'package:src/models/auth_models.dart';
 
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_event.dart';
+import '../blocs/auth/auth_state.dart';
 import '../helpers/mocks.mocks.dart';
 import '../helpers/test_helpers.dart';
 

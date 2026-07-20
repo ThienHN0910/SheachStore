@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:src/blocs/auth/auth_bloc.dart';
 import 'package:src/screens/auth_screen.dart';
 
 import '../helpers/mocks.mocks.dart';
@@ -10,15 +9,9 @@ import '../helpers/test_helpers.dart';
 void main() {
   group('[Widget Test] AuthScreen', () {
     late MockAuthService mockAuthService;
-    late AuthBloc authBloc;
 
     setUp(() {
       mockAuthService = MockAuthService();
-      authBloc = AuthBloc(authService: mockAuthService);
-    });
-
-    tearDown(() {
-      authBloc.close();
     });
 
     testWidgets('TC-W01: Hiển thị đầy đủ form Login, nút Login và nút Google Sign In khi mở app', (WidgetTester tester) async {
@@ -29,8 +22,8 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          authBloc: authBloc,
-          child: AuthScreen(onAuthenticated: () {}),
+          authService: mockAuthService,
+          child: const AuthScreen(),
         ),
       );
       await tester.pump();
@@ -51,8 +44,8 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          authBloc: authBloc,
-          child: AuthScreen(onAuthenticated: () {}),
+          authService: mockAuthService,
+          child: const AuthScreen(),
         ),
       );
       await tester.pump();
@@ -72,8 +65,8 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          authBloc: authBloc,
-          child: AuthScreen(onAuthenticated: () {}),
+          authService: mockAuthService,
+          child: const AuthScreen(),
         ),
       );
       await tester.pump();
@@ -98,10 +91,12 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
+      when(mockAuthService.signInWithGoogle()).thenThrow(Exception('cancelled'));
+
       await tester.pumpWidget(
         createTestApp(
-          authBloc: authBloc,
-          child: AuthScreen(onAuthenticated: () {}),
+          authService: mockAuthService,
+          child: const AuthScreen(),
         ),
       );
       await tester.pump();
