@@ -7,6 +7,7 @@ import '../models/order_models.dart';
 import 'orders_screen.dart';
 import '../services/cart_service.dart';
 import '../services/book_service.dart';
+import '../services/notification_service.dart';
 import '../services/order_service.dart';
 import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
@@ -24,6 +25,7 @@ class _CartScreenState extends State<CartScreen> {
   final _cartService = CartService();
   final _bookService = BookService();
   final _orderService = OrderService();
+  final _notificationService = NotificationService();
   
   late Future<CartResponse> _cartFuture;
   var _isCheckingOut = false;
@@ -121,6 +123,12 @@ class _CartScreenState extends State<CartScreen> {
               )
               .toList(),
         ),
+      );
+
+      // Show local notification for successful order creation
+      await _notificationService.showOrderCreated(
+        orderId: result.orderId,
+        totalAmount: cart.totalAmount,
       );
 
       final uri = Uri.parse(result.checkoutUrl);

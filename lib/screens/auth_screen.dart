@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
+import '../services/notification_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.onAuthenticated});
@@ -21,6 +22,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _notificationService = NotificationService();
 
   var _isRegistering = false;
   String? _errorMessage;
@@ -96,6 +98,10 @@ class _AuthScreenState extends State<AuthScreen> {
         if (state is AuthError) {
           _showError(state.message);
         } else if (state is Authenticated) {
+          _notificationService.showWelcome(
+            userName: state.user.fullName,
+            isRegistering: _isRegistering,
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_isRegistering
