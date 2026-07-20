@@ -106,6 +106,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         CartItemRequest(bookId: book.id, quantity: _quantity),
       );
       if (mounted) {
+        final navigator = Navigator.of(context);
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -114,7 +115,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             action: SnackBarAction(
               label: 'View Cart',
               onPressed: () {
-                Navigator.of(context).push(
+                navigator.push(
                   MaterialPageRoute(builder: (_) => const CartScreen()),
                 );
               },
