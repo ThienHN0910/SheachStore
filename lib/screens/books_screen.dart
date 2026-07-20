@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_event.dart';
-import '../blocs/auth/auth_state.dart';
-import '../blocs/book/book_bloc.dart';
-import '../blocs/book/book_event.dart';
-import '../blocs/book/book_state.dart';
 import '../models/api_enums.dart';
 import '../models/catalog_models.dart';
+import '../providers/auth_provider.dart';
+import '../providers/book_provider.dart';
 import '../widgets/app_states.dart';
 import '../widgets/formatters.dart';
 import 'book_detail_screen.dart';
@@ -26,13 +22,18 @@ class BooksScreen extends StatefulWidget {
 
 class _BooksScreenState extends State<BooksScreen> {
   final _searchController = TextEditingController();
-
-  List<CategoryResponse> _categories = [];
   int? _selectedCategoryId;
 
   @override
   void initState() {
     super.initState();
+    // Fetch books when screen opens (if not yet loaded)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bookProvider = context.read<BookProvider>();
+      if (bookProvider.books.isEmpty && !bookProvider.isLoading) {
+        bookProvider.fetchBooks();
+      }
+    });
   }
 
   @override
@@ -45,37 +46,34 @@ class _BooksScreenState extends State<BooksScreen> {
     setState(() {
       _selectedCategoryId = null;
     });
-    context.read<BookBloc>().add(FetchBooks());
+    context.read<BookProvider>().fetchBooks();
   }
+
   void _logout() {
-    context.read<AuthBloc>().add(LogoutRequested());
+    context.read<AuthProvider>().logout();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final auth = context.watch<AuthProvider>();
+    final books = context.watch<BookProvider>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('SheachStore'),
         centerTitle: false,
         actions: [
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, state) {
-              if (state is Authenticated && state.user.role == UserRole.admin) {
-                return IconButton(
-                  tooltip: 'Admin Panel',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.admin_panel_settings_outlined),
+          if (auth.isAuthenticated && auth.user?.role == UserRole.admin)
+            IconButton(
+              tooltip: 'Admin Panel',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
                 );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
+              },
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+            ),
           IconButton(
             tooltip: 'Orders',
             onPressed: () => Navigator.of(context).push(
@@ -137,7 +135,7 @@ class _BooksScreenState extends State<BooksScreen> {
                 setState(() {
                   _selectedCategoryId = null;
                 });
-                context.read<BookBloc>().add(SearchBooks(value));
+                context.read<BookProvider>().searchBooks(value);
               },
             ),
           ),
@@ -150,81 +148,9 @@ class _BooksScreenState extends State<BooksScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildCategoryFilterRow(theme),
+            _buildCategoryFilterRow(theme, books.categories),
             Expanded(
-              child: BlocConsumer<BookBloc, BookState>(
-                listener: (context, state) {
-                  if (state is BookLoaded) {
-                    if (_selectedCategoryId == null && _searchController.text.isEmpty) {
-                      final uniqueCategories = <int, String>{};
-                      for (final book in state.books) {
-                        if (book.categoryName != null) {
-                          uniqueCategories[book.categoryId] = book.categoryName!;
-                        }
-                      }
-                      setState(() {
-                        _categories = uniqueCategories.entries
-                            .map((e) => CategoryResponse(
-                                  id: e.key,
-                                  name: e.value,
-                                  slug: '',
-                                ))
-                            .toList();
-                      });
-                    }
-                  }
-                },
-                builder: (context, state) {
-                  if (state is BookLoading) {
-                    return const LoadingState();
-                  }
-
-                  if (state is BookError) {
-                    return ErrorState(
-                      message: state.message,
-                      onRetry: _refresh,
-                      onLogout: _logout,
-                    );
-                  }
-
-                  if (state is BookLoaded) {
-                    final books = state.books;
-                    if (books.isEmpty) {
-                      return ListView(
-                        children: const [
-                          SizedBox(height: 100),
-                          EmptyState(
-                            title: 'No books found',
-                            message: 'Try a different search term or check back later.',
-                          ),
-                        ],
-                      );
-                    }
-
-                    return ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      itemCount: books.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final book = books[index];
-                        return _BookCard(
-                          book: book,
-                          onTap: () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => BookDetailScreen(bookId: book.id),
-                              ),
-                            );
-                            _refresh();
-                          },
-                        );
-                      },
-                    );
-                  }
-
-                  return const SizedBox.shrink();
-                },
-              ),
+              child: _buildBookList(theme, books),
             ),
           ],
         ),
@@ -232,18 +158,64 @@ class _BooksScreenState extends State<BooksScreen> {
     );
   }
 
-  Widget _buildCategoryFilterRow(ThemeData theme) {
-    if (_categories.isEmpty) return const SizedBox.shrink();
+  Widget _buildBookList(ThemeData theme, BookProvider books) {
+    if (books.isLoading) {
+      return const LoadingState();
+    }
+
+    if (books.errorMessage != null) {
+      return ErrorState(
+        message: books.errorMessage!,
+        onRetry: _refresh,
+        onLogout: _logout,
+      );
+    }
+
+    if (books.books.isEmpty) {
+      return ListView(
+        children: const [
+          SizedBox(height: 100),
+          EmptyState(
+            title: 'No books found',
+            message: 'Try a different search term or check back later.',
+          ),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: books.books.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final book = books.books[index];
+        return _BookCard(
+          book: book,
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BookDetailScreen(bookId: book.id),
+              ),
+            );
+            _refresh();
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoryFilterRow(ThemeData theme, List<CategoryResponse> categories) {
+    if (categories.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
       height: 52,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _categories.length + 1,
+        itemCount: categories.length + 1,
         itemBuilder: (context, index) {
           final isAll = index == 0;
-          final category = isAll ? null : _categories[index - 1];
+          final category = isAll ? null : categories[index - 1];
           final isSelected = isAll ? _selectedCategoryId == null : _selectedCategoryId == category!.id;
 
           return Padding(
@@ -258,9 +230,9 @@ class _BooksScreenState extends State<BooksScreen> {
                   });
                   _searchController.clear();
                   if (isAll) {
-                    context.read<BookBloc>().add(FetchBooks());
+                    context.read<BookProvider>().fetchBooks();
                   } else {
-                    context.read<BookBloc>().add(FilterByCategory(category!.id));
+                    context.read<BookProvider>().filterByCategory(category!.id);
                   }
                 }
               },

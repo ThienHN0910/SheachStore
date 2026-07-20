@@ -38,8 +38,6 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   http: ^1.5.0
   url_launcher: ^6.3.1
-  flutter_bloc: ^8.1.6
-  equatable: ^2.0.5
   firebase_core: ^4.11.0
   flutter_local_notifications: ^22.0.1
   firebase_auth: ^6.5.4

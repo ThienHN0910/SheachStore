@@ -1,16 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_event.dart';
-import '../blocs/auth/auth_state.dart';
+import '../providers/auth_provider.dart';
+import '../providers/book_provider.dart';
 import '../services/notification_service.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, required this.onAuthenticated});
-
-  final VoidCallback onAuthenticated;
+  const AuthScreen({super.key});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -29,6 +26,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Timer? _errorTimer;
   var _obscurePassword = true;
   var _obscureConfirmPassword = true;
+  AuthStatus? _previousStatus;
 
   @override
   void dispose() {
@@ -71,48 +69,61 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final auth = context.read<AuthProvider>();
 
     if (_isRegistering) {
-      context.read<AuthBloc>().add(
-            RegisterRequested(
-              email: email,
-              password: password,
-              fullName: _fullNameController.text.trim(),
-            ),
-          );
+      auth.register(
+        email: email,
+        password: password,
+        fullName: _fullNameController.text.trim(),
+      );
     } else {
-      context.read<AuthBloc>().add(
-            LoginRequested(
-              email: email,
-              password: password,
+      auth.login(email: email, password: password);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
+    final currentStatus = auth.status;
+
+    if (_previousStatus != currentStatus) {
+      if (currentStatus == AuthStatus.error && auth.errorMessage != null) {
+        // Show error after frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showError(auth.errorMessage!);
+        });
+      } else if (currentStatus == AuthStatus.authenticated && auth.user != null) {
+        // Trigger notification and load books
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _notificationService.showWelcome(
+            userName: auth.user!.fullName,
+            isRegistering: _isRegistering,
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_isRegistering
+                  ? 'Registration successful! Welcome, ${auth.user!.fullName}'
+                  : 'Login successful! Welcome back, ${auth.user!.fullName}'),
+              backgroundColor: Colors.green,
             ),
           );
+          context.read<BookProvider>().fetchBooks();
+        });
+      }
+      _previousStatus = currentStatus;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthError) {
-          _showError(state.message);
-        } else if (state is Authenticated) {
-          _notificationService.showWelcome(
-            userName: state.user.fullName,
-            isRegistering: _isRegistering,
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_isRegistering
-                  ? 'Registration successful! Welcome, ${state.user.fullName}'
-                  : 'Login successful! Welcome back, ${state.user.fullName}'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      },
-      child: Scaffold(
+    // Watch auth to trigger didChangeDependencies on status change
+    final auth = context.watch<AuthProvider>();
+    final isLoading = auth.isLoading;
+    return Scaffold(
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -362,24 +373,19 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                             ],
                             const SizedBox(height: 24),
-                            BlocBuilder<AuthBloc, AuthState>(
-                              builder: (context, state) {
-                                final isSubmitting = state is AuthLoading;
-                                return FilledButton(
-                                  onPressed: isSubmitting ? null : _submit,
-                                  child: isSubmitting
-                                      ? const SizedBox.square(
-                                          dimension: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Text(_isRegistering
-                                          ? 'Create account'
-                                          : 'Login'),
-                                );
-                              },
+                            FilledButton(
+                              onPressed: isLoading ? null : _submit,
+                              child: isLoading
+                                  ? const SizedBox.square(
+                                      dimension: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(_isRegistering
+                                      ? 'Create account'
+                                      : 'Login'),
                             ),
                             const SizedBox(height: 16),
                             TextButton(
@@ -418,7 +424,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 16),
                             OutlinedButton(
                               onPressed: () {
-                                context.read<AuthBloc>().add(GoogleSignInRequested());
+                                context.read<AuthProvider>().signInWithGoogle();
                               },
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: theme.colorScheme.outline),
@@ -454,7 +460,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
             ),
-          ),
         ),
       ),
     );

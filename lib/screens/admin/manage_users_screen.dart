@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../blocs/auth/auth_bloc.dart';
-import '../../blocs/auth/auth_state.dart';
+import 'package:provider/provider.dart';
 import '../../core/api/api_exception.dart';
 import '../../models/api_enums.dart';
 import '../../models/user_models.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/user_service.dart';
 import '../../widgets/app_states.dart';
 
@@ -79,11 +78,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String? currentUserId;
-    final authState = context.read<AuthBloc>().state;
-    if (authState is Authenticated) {
-      currentUserId = authState.user.id;
-    }
+    final currentUserId = context.read<AuthProvider>().user?.id;
 
     return Scaffold(
       appBar: AppBar(
